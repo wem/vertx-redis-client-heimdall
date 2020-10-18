@@ -25,6 +25,11 @@ internal class RedisResilientImpl(
     private val reconnectingHandler: RedisConnectionFailureHandler = configureRedisConnectionFailureHandler()
 
     override fun connect(handler: Handler<AsyncResult<RedisConnection>>): Redis {
+        if (reconnectingInProgress) {
+            handler.handle(Future.failedFuture(RedisResilientException("Client is in reconnection process")))
+            return this
+        }
+
         delegate.connect { asyncConnection ->
             if (asyncConnection.succeeded()) {
                 val connection = ResilientRedisConnection(asyncConnection.result()) {

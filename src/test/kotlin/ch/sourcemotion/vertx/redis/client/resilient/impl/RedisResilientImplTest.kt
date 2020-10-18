@@ -6,6 +6,7 @@ import ch.sourcemotion.vertx.redis.client.resilient.RedisResilientException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.redis.client.batchAwait
@@ -29,6 +30,32 @@ internal class RedisResilientImplTest : AbstractRedisTest() {
     internal fun batch_successful(testContext: VertxTestContext) = testContext.async {
         val sut = RedisResilient.create(vertx, getDefaultRedisOptions())
         sut.verifyConnectivityWithPingPongByBatch()
+    }
+
+    @Test
+    internal fun send_fast_fail_while_reconnect_in_progress(testContext: VertxTestContext) = testContext.async {
+        val sut = RedisResilient.create(vertx, getDefaultRedisOptions())
+
+        downStreamTimeout()
+        // Initiate reconnection process
+        shouldThrow<RedisResilientException> { sut.sendPing() }
+
+        val exceptionWhileReconnecting = shouldThrow<RedisResilientException> { sut.sendPing() }
+        // TODO: We should introduce exception reasons
+        exceptionWhileReconnecting.message.shouldBe("Client is in reconnection process")
+    }
+
+    @Test
+    internal fun batch_fast_fail_while_reconnect_in_progress(testContext: VertxTestContext) = testContext.async {
+        val sut = RedisResilient.create(vertx, getDefaultRedisOptions())
+
+        downStreamTimeout()
+        // Initiate reconnection process
+        shouldThrow<RedisResilientException> { sut.sendPingBatch() }
+
+        val exceptionWhileReconnecting = shouldThrow<RedisResilientException> { sut.sendPingBatch() }
+        // TODO: We should introduce exception reasons
+        exceptionWhileReconnecting.message.shouldBe("Client is in reconnection process")
     }
 
     @Test
