@@ -1,2 +1,2 @@
-rootProject.name = "vertx-redis-client-resilient"
+rootProject.name = "vertx-redis-client-heimdall"
 
