@@ -1,4 +1,4 @@
-package ch.sourcemotion.vertx.redis.client.resilient.container
+package ch.sourcemotion.vertx.redis.client.heimdall.testing.container
 
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network

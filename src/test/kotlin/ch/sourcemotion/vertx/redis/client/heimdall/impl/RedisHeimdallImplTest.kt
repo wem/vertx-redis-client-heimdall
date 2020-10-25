@@ -1,8 +1,10 @@
-package ch.sourcemotion.vertx.redis.client.resilient.impl
+package ch.sourcemotion.vertx.redis.client.heimdall.impl
 
-import ch.sourcemotion.vertx.redis.client.resilient.AbstractRedisTest
-import ch.sourcemotion.vertx.redis.client.resilient.RedisResilient
-import ch.sourcemotion.vertx.redis.client.resilient.RedisResilientException
+import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractRedisTest
+import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdall
+import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException
+import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException.Reason
+import ch.sourcemotion.vertx.redis.client.heimdall.testing.shouldBePongResponse
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -17,160 +19,205 @@ import io.vertx.redis.client.Request
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 
-internal class RedisResilientImplTest : AbstractRedisTest() {
+internal class RedisHeimdallImplTest : AbstractRedisTest() {
 
     @Test
     internal fun send_successful(testContext: VertxTestContext) = testContext.async {
-        val sut = RedisResilient.create(vertx, getDefaultRedisOptions())
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
         sut.verifyConnectivityWithPingPongBySend()
     }
 
     @Test
     internal fun batch_successful(testContext: VertxTestContext) = testContext.async {
-        val sut = RedisResilient.create(vertx, getDefaultRedisOptions())
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
         sut.verifyConnectivityWithPingPongByBatch()
     }
 
     @Test
     internal fun send_fast_fail_while_reconnect_in_progress(testContext: VertxTestContext) = testContext.async {
-        val sut = RedisResilient.create(vertx, getDefaultRedisOptions())
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
 
         downStreamTimeout()
         // Initiate reconnection process
-        shouldThrow<RedisResilientException> { sut.sendPing() }
+        shouldThrow<RedisHeimdallException> { sut.sendPing() }
 
-        val exceptionWhileReconnecting = shouldThrow<RedisResilientException> { sut.sendPing() }
-        // TODO: We should introduce exception reasons
-        exceptionWhileReconnecting.message.shouldBe("Client is in reconnection process")
+        val exceptionWhileReconnecting = shouldThrow<RedisHeimdallException> { sut.sendPing() }
+        exceptionWhileReconnecting.reason.shouldBe(Reason.ACCESS_DURING_RECONNECT)
     }
 
     @Test
     internal fun batch_fast_fail_while_reconnect_in_progress(testContext: VertxTestContext) = testContext.async {
-        val sut = RedisResilient.create(vertx, getDefaultRedisOptions())
+        // given
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
 
+        // when
         downStreamTimeout()
-        // Initiate reconnection process
-        shouldThrow<RedisResilientException> { sut.sendPingBatch() }
 
-        val exceptionWhileReconnecting = shouldThrow<RedisResilientException> { sut.sendPingBatch() }
-        // TODO: We should introduce exception reasons
-        exceptionWhileReconnecting.message.shouldBe("Client is in reconnection process")
+        // then (Initiate reconnection process)
+        shouldThrow<RedisHeimdallException> { sut.sendPingBatch() }
+
+        // then
+        val exceptionWhileReconnecting = shouldThrow<RedisHeimdallException> { sut.sendPingBatch() }
+        exceptionWhileReconnecting.reason.shouldBe(Reason.ACCESS_DURING_RECONNECT)
     }
 
     @Test
     internal fun send_notification_on_successful_reconnect(testContext: VertxTestContext) =
         testContext.async(2) { checkpoint ->
-            val redisOptions = getDefaultRedisOptions()
-            val sut = RedisResilient.create(vertx, redisOptions)
+            // given
+            val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
-            eventBus.consumer<String>(redisOptions.reconnectingStartNotificationAddress) {
+            // then
+            eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
                 testContext.verify { it.body().shouldNotBeBlank() }
                 checkpoint.flag()
             }
 
-            eventBus.consumer<Unit>(redisOptions.reconnectingSucceededNotificationAddress) {
+            // then
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingSucceededNotificationAddress) {
                 testScope.launch {
                     sut.verifyConnectivityWithPingPongBySend()
                     checkpoint.flag()
                 }
             }
 
-            eventBus.consumer<Unit>(redisOptions.reconnectingFailedNotificationAddress) {
+            // then NOT
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingFailedNotificationAddress) {
                 testContext.failNow(IllegalAccessException("On successful reconnect, the failed notification should not get send"))
             }
 
+            // when
             downStreamTimeout()
             // Initiate reconnection process
-            shouldThrow<RedisResilientException> { sut.sendPing() }
-            delay(redisOptions.reconnectInterval * 2)
+            shouldThrow<RedisHeimdallException> { sut.sendPing() }
+            delay(redisHeimdallOptions.reconnectInterval * 2)
             removeConnectionIssues()
         }
 
     @Test
     internal fun batch_notification_on_successful_reconnect(testContext: VertxTestContext) =
         testContext.async(2) { checkpoint ->
-            val redisOptions = getDefaultRedisOptions()
-            val sut = RedisResilient.create(vertx, redisOptions)
+            // given
+            val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
-            eventBus.consumer<String>(redisOptions.reconnectingStartNotificationAddress) {
+            // then
+            eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
                 testContext.verify { it.body().shouldNotBeBlank() }
                 checkpoint.flag()
             }
 
-            eventBus.consumer<Unit>(redisOptions.reconnectingSucceededNotificationAddress) {
+            // then
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingSucceededNotificationAddress) {
                 testScope.launch {
                     sut.verifyConnectivityWithPingPongByBatch()
                     checkpoint.flag()
                 }
             }
 
-            eventBus.consumer<Unit>(redisOptions.reconnectingFailedNotificationAddress) {
+            // then NOT
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingFailedNotificationAddress) {
                 testContext.failNow(IllegalAccessException("On successful reconnect, the failed notification should not get send"))
             }
 
+            // when
             downStreamTimeout()
             // Initiate reconnection process
-            shouldThrow<RedisResilientException> { sut.sendPingBatch() }
-            delay(redisOptions.reconnectInterval * 2)
+            shouldThrow<RedisHeimdallException> { sut.sendPingBatch() }
+            delay(redisHeimdallOptions.reconnectInterval * 2)
             removeConnectionIssues()
         }
 
     @Test
     internal fun send_notification_on_failed_reconnect(testContext: VertxTestContext) =
         testContext.async(2) { checkpoint ->
-            val redisOptions = getDefaultRedisOptions().apply {
+            // given
+            val redisHeimdallOptions = getDefaultRedisHeimdallOptions().apply {
                 reconnectInterval = 10
                 maxReconnectAttempts = 1
             }
-            val sut = RedisResilient.create(vertx, redisOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
-            eventBus.consumer<String>(redisOptions.reconnectingStartNotificationAddress) {
+            // then
+            eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
                 testContext.verify { it.body().shouldNotBeBlank() }
                 checkpoint.flag()
             }
 
-            eventBus.consumer<String>(redisOptions.reconnectingFailedNotificationAddress) {
+            // then
+            eventBus.consumer<String>(redisHeimdallOptions.reconnectingFailedNotificationAddress) {
                 testContext.verify { it.body().shouldNotBeBlank() }
                 checkpoint.flag()
             }
 
-            eventBus.consumer<Unit>(redisOptions.reconnectingSucceededNotificationAddress) {
+            // then NOT
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingSucceededNotificationAddress) {
                 testContext.failNow(IllegalAccessException("On failed reconnect, the failed notification should not get send"))
             }
 
+            // when
             downStreamTimeout()
             // Initiate reconnection process
-            shouldThrow<RedisResilientException> { sut.sendPing() }
+            shouldThrow<RedisHeimdallException> { sut.sendPing() }
         }
 
     @Test
     internal fun batch_notification_on_failed_reconnect(testContext: VertxTestContext) =
         testContext.async(2) { checkpoint ->
-            val redisOptions = getDefaultRedisOptions().apply {
+            // given
+            val redisHeimdallOptions = getDefaultRedisHeimdallOptions().apply {
                 reconnectInterval = 10
                 maxReconnectAttempts = 1
             }
-            val sut = RedisResilient.create(vertx, redisOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
-            eventBus.consumer<String>(redisOptions.reconnectingStartNotificationAddress) {
+            // then
+            eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
                 testContext.verify { it.body().shouldNotBeBlank() }
                 checkpoint.flag()
             }
 
-            eventBus.consumer<String>(redisOptions.reconnectingFailedNotificationAddress) {
+            // then
+            eventBus.consumer<String>(redisHeimdallOptions.reconnectingFailedNotificationAddress) {
                 testContext.verify { it.body().shouldNotBeBlank() }
                 checkpoint.flag()
             }
 
-            eventBus.consumer<Unit>(redisOptions.reconnectingSucceededNotificationAddress) {
+            // then NOT
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingSucceededNotificationAddress) {
                 testContext.failNow(IllegalAccessException("On failed reconnect, the failed notification should not get send"))
             }
 
+            // when
             downStreamTimeout()
             // Initiate reconnection process
-            shouldThrow<RedisResilientException> { sut.sendPingBatch() }
+            shouldThrow<RedisHeimdallException> { sut.sendPingBatch() }
         }
+
+    @Test
+    internal fun error_handling_off_when_client_closed(testContext: VertxTestContext) = testContext.async(1) { checkpoint ->
+        // given
+        val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+        val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+
+        // then NOT
+        eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
+            fail("Connecting failure should not get propagated when client was closed before")
+        }
+
+        // when
+        sut.close()
+        downStreamTimeout()
+
+        // We delay the end so the reconnecting start consumer would be called in async fashion
+        launch {
+            delay(2000)
+            checkpoint.flag()
+        }
+    }
 
     private suspend fun Redis.verifyConnectivityWithPingPongBySend() {
         val response = sendPing()

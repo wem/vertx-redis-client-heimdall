@@ -1,17 +1,18 @@
-package ch.sourcemotion.vertx.redis.client.resilient
+package ch.sourcemotion.vertx.redis.client.heimdall
 
 import io.vertx.redis.client.RedisOptions
 
-class RedisResilientOptions(other: RedisOptions?) : RedisOptions(other) {
+class RedisHeimdallOptions(other: RedisOptions?) : RedisOptions(other) {
 
     companion object {
         const val DEFAULT_RECONNECT = true
         const val DEFAULT_RECONNECT_INTERVAL = 2000L
         const val DEFAULT_MAX_RECONNECT_TRIES = -1
+
         const val DEFAULT_RECONNECTING_NOTIFICATIONS = true
-        const val DEFAULT_RECONNECTING_START_NOTIFICATION_ADDRESS = "/vertx/redis/resilient/reconnecting/start"
-        const val DEFAULT_RECONNECTING_SUCCEEDED_NOTIFICATION_ADDRESS = "/vertx/redis/resilient/reconnecting/succeeded"
-        const val DEFAULT_RECONNECTING_FAILED_NOTIFICATION_ADDRESS = "/vertx/redis/resilient/reconnecting/failed"
+        const val DEFAULT_RECONNECTING_START_NOTIFICATION_ADDRESS = "/vertx/redis/heimdall/reconnecting/start"
+        const val DEFAULT_RECONNECTING_SUCCEEDED_NOTIFICATION_ADDRESS = "/vertx/redis/heimdall/reconnecting/succeeded"
+        const val DEFAULT_RECONNECTING_FAILED_NOTIFICATION_ADDRESS = "/vertx/redis/heimdall/reconnecting/failed"
     }
 
     /**
@@ -51,7 +52,7 @@ class RedisResilientOptions(other: RedisOptions?) : RedisOptions(other) {
      */
     var reconnectingFailedNotificationAddress = DEFAULT_RECONNECTING_FAILED_NOTIFICATION_ADDRESS
 
-    constructor() : this(RedisResilientOptions())
+    constructor() : this(RedisHeimdallOptions())
 
     fun endpointsToString() = endpoints.joinToString(",")
 }

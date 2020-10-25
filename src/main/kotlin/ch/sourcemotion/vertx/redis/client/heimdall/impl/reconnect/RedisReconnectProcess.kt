@@ -1,7 +1,8 @@
-package ch.sourcemotion.vertx.redis.client.resilient.impl
+package ch.sourcemotion.vertx.redis.client.heimdall.impl.reconnect
 
-import ch.sourcemotion.vertx.redis.client.resilient.RedisResilientException
-import ch.sourcemotion.vertx.redis.client.resilient.RedisResilientOptions
+import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException
+import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException.Reason
+import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions
 import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
@@ -12,17 +13,18 @@ import io.vertx.redis.client.Redis
 import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 
-interface RedisConnectionFailureHandler {
+internal interface RedisReconnectProcess {
     fun startReconnectProcess(cause: Throwable, handler: Handler<AsyncResult<Redis>>)
 }
 
-internal abstract class AbstractRedisReconnectingHandler(
-    protected val options: RedisResilientOptions,
-) : RedisConnectionFailureHandler {
+internal abstract class AbstractRedisReconnectProcess(
+    protected val options: RedisHeimdallOptions,
+) : RedisReconnectProcess {
     protected fun Handler<AsyncResult<Redis>>.replyMaxNumberOfAttemptsReached(maxReconnectAttempts: Int) {
         handle(
             Future.failedFuture(
-                RedisResilientException(
+                RedisHeimdallException(
+                    Reason.MAX_ATTEMPTS_REACHED,
                     message = "Max number of reconnect attempts \"$maxReconnectAttempts\" to Redis server(s) ${options.endpointsToString()}"
                 )
             )
@@ -30,13 +32,12 @@ internal abstract class AbstractRedisReconnectingHandler(
     }
 }
 
-internal class NoopRedisReconnectingHandler(
-    options: RedisResilientOptions,
-) : AbstractRedisReconnectingHandler(options) {
+internal class NoopRedisReconnectProcess(options: RedisHeimdallOptions) : AbstractRedisReconnectProcess(options) {
     override fun startReconnectProcess(cause: Throwable, handler: Handler<AsyncResult<Redis>>) {
         handler.handle(
             Future.failedFuture(
-                RedisResilientException(
+                RedisHeimdallException(
+                    Reason.RECONNECT_DISABLED,
                     "Extended Redis client that's configured for server(s)" +
                             " ${options.endpointsToString()} is not configured for retries"
                 )
@@ -45,15 +46,15 @@ internal class NoopRedisReconnectingHandler(
     }
 }
 
-internal class SimpleRedisReconnectingHandler(
+internal class DefaultRedisReconnectProcess(
     private val vertx: Vertx,
-    options: RedisResilientOptions,
+    options: RedisHeimdallOptions,
     private val maxReconnectAttempts: Int = options.maxReconnectAttempts,
     private val reconnectInterval: Long = options.reconnectInterval
-) : AbstractRedisReconnectingHandler(options) {
+) : AbstractRedisReconnectProcess(options) {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(SimpleRedisReconnectingHandler::class.java)
+        private val logger = LoggerFactory.getLogger(DefaultRedisReconnectProcess::class.java)
     }
 
     override fun startReconnectProcess(cause: Throwable, handler: Handler<AsyncResult<Redis>>) {
@@ -85,10 +86,7 @@ internal class SimpleRedisReconnectingHandler(
         }
     }
 
-    private fun scheduleReattempt(
-        previousAttempts: Int,
-        handler: Handler<AsyncResult<Redis>>
-    ) {
+    private fun scheduleReattempt(previousAttempts: Int,handler: Handler<AsyncResult<Redis>>) {
         logger.debug(
             "Unable to reconnect to Redis server(s) ${options.endpointsToString()}. " +
                     "Will retry in $reconnectInterval Milliseconds"
