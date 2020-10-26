@@ -50,7 +50,7 @@ the client is ready to run out of the box. Please refer Javadoc of the options c
 
 ### General purpose client
 
-The client with the same functionality as the original client can be instantiated as follows.
+The client with the same basic functionality as the original client (additionally with reconnect capabilities) can be instantiated as follows.
 
 **Java**
 ```java
@@ -101,7 +101,7 @@ The subscription client will subscribe on the passed channel names immediately a
 **If you don't want to subscribe on any channels at this point you can pass an empty channel name list.**
 
 #### Add / remove channel to / from subscription
-The subscription client provided functions to add and remove channels during runtime
+The subscription client provides functions to add and remove channels during runtime.
 
 **Add**
 ```kotlin
@@ -124,7 +124,7 @@ suspend fun removeChannelAwait(channelName: String): RedisHeimdallSubscription
 ```
 
 ### Reconnect
-When the option `ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions#reconnect` is set to true (default), 
+If the option `ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions#reconnect` is set to true (default), 
 the client will reconnect on connection issues automatically. 
 
 **While reconnecting is in progress the client will decline any command against Redis. So an
@@ -137,11 +137,11 @@ The client should cover any situation of connection issues.
 - If the TCP connection got lost
 - When a command did signal with a connection issue.
 
-#### Reconnect events over the event bus
+#### Reconnecting process events over the event bus
 Both client variants will notify you about the state of a reconnecting process.
 
 ##### Disable
-If you have no need to get such notifications, you could disable this feature
+If you have no need to get such notifications, you could disable this feature by setting false to
 `ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions#reconnectingNotifications`
 
 ##### Reconnect start
@@ -170,4 +170,4 @@ The `ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException` has a p
 about the kind of error.
 
 ## Contribution and bug reports
-Both is very welcome. :) ... Have fun
+Both is very welcome. :) ... Have fun.
