@@ -11,6 +11,7 @@ import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
 import io.vertx.redis.client.impl.types.ErrorType
+import java.nio.channels.ClosedChannelException
 
 internal open class RedisHeimdallConnection(
     private val delegate: RedisConnection,
@@ -30,6 +31,7 @@ internal open class RedisHeimdallConnection(
     }
 
     override fun send(command: Request, onSend: Handler<AsyncResult<Response>>): RedisConnection {
+        val handlerWrapper = ExecutionResultHandlerWrapper(onSend)
         delegate.exceptionHandler {
             logger.debug("Exception handler called on command $command")
             val exception = RedisHeimdallException(
@@ -38,10 +40,10 @@ internal open class RedisHeimdallConnection(
                 cause = it
             )
             connectionIssueHandler.handle(exception)
-            onSend.handle(Future.failedFuture(exception))
+            handlerWrapper.handle(Future.failedFuture(exception))
         }
         delegate.send(command) { response ->
-            interceptConnectionIssues(response, onSend)
+            interceptConnectionIssues(response, handlerWrapper)
         }
         return this
     }
@@ -50,13 +52,14 @@ internal open class RedisHeimdallConnection(
         commands: List<Request>,
         onSend: Handler<AsyncResult<List<Response>>>
     ): RedisConnection {
+        val handlerWrapper = ExecutionResultHandlerWrapper(onSend)
         delegate.exceptionHandler {
             val exception = RedisHeimdallException(Reason.CONNECTION_ISSUE, cause = it)
             connectionIssueHandler.handle(exception)
-            onSend.handle(Future.failedFuture(exception))
+            handlerWrapper.handle(Future.failedFuture(exception))
         }
         delegate.batch(commands) { response ->
-            interceptConnectionIssues(response, onSend)
+            interceptConnectionIssues(response, handlerWrapper)
         }
         return this
     }
@@ -68,6 +71,8 @@ internal open class RedisHeimdallConnection(
     private fun <R> interceptConnectionIssues(response: AsyncResult<R>, handler: Handler<AsyncResult<R>>) {
         if (response.failed()) {
             val cause = response.cause()
+
+            // Normalize the exception. Only ErrorType or RedisResilientException should be returned
             val finalCause = if (cause is ErrorType) {
                 // We start reconnect process on CONNECTION_CLOSED
                 if (cause.toString() == "CONNECTION_CLOSED") {
@@ -76,8 +81,10 @@ internal open class RedisHeimdallConnection(
                 } else cause
             } else if (cause is RedisHeimdallException) {
                 cause
-                // Normalize the exception. Only ErrorType or RedisResilientException should be returned
-            } else RedisHeimdallException(Reason.UNSPECIFIED, cause = cause)
+            } else if (cause is ClosedChannelException) {
+                RedisHeimdallException(Reason.CONNECTION_ISSUE, cause.message, cause)
+                    .also { connectionIssueHandler.handle(it) }
+            } else RedisHeimdallException(Reason.UNSPECIFIED, cause.message, cause)
             handler.handle(Future.failedFuture(finalCause))
         } else {
             handler.handle(response)
@@ -86,5 +93,17 @@ internal open class RedisHeimdallConnection(
 
     private fun onConnectionEnd(void: Void?) {
         connectionIssueHandler.handle(RedisHeimdallException(Reason.CONNECTION_ISSUE, "Connection did end"))
+    }
+}
+
+private class ExecutionResultHandlerWrapper<T>(private val delegate: Handler<AsyncResult<T>>) :
+    Handler<AsyncResult<T>> by delegate {
+    private var delegateCalled = false
+
+    override fun handle(event: AsyncResult<T>?) {
+        if (delegateCalled.not()) {
+            delegateCalled = true
+            delegate.handle(event)
+        }
     }
 }

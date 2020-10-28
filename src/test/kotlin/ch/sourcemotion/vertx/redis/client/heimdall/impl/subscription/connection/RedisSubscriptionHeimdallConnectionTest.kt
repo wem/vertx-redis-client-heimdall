@@ -20,7 +20,9 @@ import io.vertx.redis.client.Command
 import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
+import io.vertx.redis.client.impl.types.ErrorType
 import org.junit.jupiter.api.Test
+import java.nio.channels.ClosedChannelException
 
 internal class RedisSubscriptionHeimdallConnectionTest : AbstractVertxTest() {
 
@@ -111,7 +113,7 @@ internal class RedisSubscriptionHeimdallConnectionTest : AbstractVertxTest() {
         }
 
     @Test
-    internal fun correct_exception_type_subscribe_after_reconnect_failed(testContext: VertxTestContext) =
+    internal fun correct_reason_on_general_exception_when_subscribe_after_reconnect(testContext: VertxTestContext) =
         testContext.async {
             // given
             val rootCause = Exception("subscribe_after_reconnect_failed-root-cause")
@@ -130,14 +132,121 @@ internal class RedisSubscriptionHeimdallConnectionTest : AbstractVertxTest() {
 
             // when & then
             sut.subscribeAfterReconnect {
-                it.failed().shouldBeTrue()
-                it.cause().shouldBe(RedisHeimdallException(Reason.UNSPECIFIED, cause = rootCause))
+                verifyFailedAndExpectedReason(it, Reason.UNSPECIFIED)
             }
         }
 
+    @Test
+    internal fun correct_reason_on_closed_connection_exception_when_subscribe_after_reconnect(testContext: VertxTestContext) =
+        testContext.async {
+            // given
+            val rootCause = ClosedChannelException()
+
+            val delegate = createRedisConnectionMock(rootCause)
+
+            val channels = listOf("channel-one", "channel-two")
+            val clientInstanceId = ClientInstanceId("a571a8a0-1594-4635-8cc1-51646c5b334d")
+            val subscriptionStore = vertx.createSubscriptionStore(clientInstanceId)
+            channels.forEach { subscriptionStore.addSubscription(it) }
+
+            val sut = createSubscriptionConnection(
+                subscriptionStore = subscriptionStore,
+                delegate = delegate
+            )
+
+            // when & then
+            sut.subscribeAfterReconnect {
+                verifyFailedAndExpectedReason(it, Reason.CONNECTION_ISSUE)
+            }
+        }
+
+    @Test
+    internal fun correct_reason_on_error_type_exception_when_subscribe_after_reconnect(testContext: VertxTestContext) =
+        testContext.async {
+            // given
+            val rootCause = ErrorType.create("protocol error")
+
+            val delegate = createRedisConnectionMock(rootCause)
+
+            val channels = listOf("channel-one", "channel-two")
+            val clientInstanceId = ClientInstanceId("a571a8a0-1594-4635-8cc1-51646c5b334d")
+            val subscriptionStore = vertx.createSubscriptionStore(clientInstanceId)
+            channels.forEach { subscriptionStore.addSubscription(it) }
+
+            val sut = createSubscriptionConnection(
+                subscriptionStore = subscriptionStore,
+                delegate = delegate
+            )
+
+            // when & then
+            sut.subscribeAfterReconnect {
+                it.failed().shouldBeTrue()
+                val cause = it.cause()
+                cause.shouldBeInstanceOf<ErrorType>()
+                cause.message.shouldBe(rootCause.message)
+            }
+        }
+
+    @Test
+    internal fun correct_reason_on_CONNECTION_CLOSED_exception_when_subscribe_after_reconnect(testContext: VertxTestContext) =
+        testContext.async {
+            // given
+            val rootCause = ErrorType.create("CONNECTION_CLOSED")
+
+            val delegate = createRedisConnectionMock(rootCause)
+
+            val channels = listOf("channel-one", "channel-two")
+            val clientInstanceId = ClientInstanceId("a571a8a0-1594-4635-8cc1-51646c5b334d")
+            val subscriptionStore = vertx.createSubscriptionStore(clientInstanceId)
+            channels.forEach { subscriptionStore.addSubscription(it) }
+
+            val sut = createSubscriptionConnection(
+                subscriptionStore = subscriptionStore,
+                delegate = delegate
+            )
+
+            // when & then
+            sut.subscribeAfterReconnect {
+                verifyFailedAndExpectedReason(it, Reason.CONNECTION_ISSUE)
+            }
+        }
+
+    @Test
+    internal fun correct_reason_on_internal_exception_when_subscribe_after_reconnect(testContext: VertxTestContext) =
+        testContext.async {
+            // given
+            val rootCause = RedisHeimdallException(Reason.INTERNAL)
+
+            val delegate = createRedisConnectionMock(rootCause)
+
+            val channels = listOf("channel-one", "channel-two")
+            val clientInstanceId = ClientInstanceId("a571a8a0-1594-4635-8cc1-51646c5b334d")
+            val subscriptionStore = vertx.createSubscriptionStore(clientInstanceId)
+            channels.forEach { subscriptionStore.addSubscription(it) }
+
+            val sut = createSubscriptionConnection(
+                subscriptionStore = subscriptionStore,
+                delegate = delegate
+            )
+
+            // when & then
+            sut.subscribeAfterReconnect {
+                verifyFailedAndExpectedReason(it, Reason.INTERNAL)
+            }
+        }
+
+    private fun verifyFailedAndExpectedReason(it: AsyncResult<Unit>, reason: Reason) {
+        it.failed().shouldBeTrue()
+        val cause = it.cause()
+        cause.shouldBeInstanceOf<RedisHeimdallException>()
+        cause.reason.shouldBe(reason)
+    }
+
     private fun createSubscriptionConnection(
         delegate: RedisConnection = createRedisConnectionMock(),
-        connectionIssueHandler: Handler<Throwable> = mockk(),
+        connectionIssueHandler: Handler<Throwable> = mockk {
+            every { handle(any()) } returns Unit
+        },
         subscriptionStore: SubscriptionStore = mockk(),
         messageHandler: Handler<Response> = mockk()
     ): RedisSubscriptionHeimdallConnection {
@@ -149,7 +258,7 @@ internal class RedisSubscriptionHeimdallConnectionTest : AbstractVertxTest() {
         ).initConnection() as RedisSubscriptionHeimdallConnection
     }
 
-    private fun createRedisConnectionMock(sendBatchCause: Exception? = null, block: (RedisConnection.() -> Unit)? = null) =
+    private fun createRedisConnectionMock(sendBatchCause: Throwable? = null, block: (RedisConnection.() -> Unit)? = null) =
         mockk<RedisConnection> {
             every { endHandler(any()) } returns this@mockk
             every { handler(any()) } returns this@mockk
