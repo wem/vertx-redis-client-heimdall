@@ -1,21 +1,24 @@
 package ch.sourcemotion.vertx.redis.client.heimdall.impl
 
-import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractRedisTest
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdall
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException.Reason
+import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractRedisTest
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.shouldBePongResponse
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.redis.client.batchAwait
 import io.vertx.kotlin.redis.client.sendAwait
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.Redis
 import io.vertx.redis.client.Request
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.junit.jupiter.api.Test
@@ -198,24 +201,68 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         }
 
     @Test
-    internal fun error_handling_off_when_client_closed(testContext: VertxTestContext) = testContext.async(1) { checkpoint ->
-        // given
+    internal fun error_handling_off_when_client_closed(testContext: VertxTestContext) =
+        testContext.async(1) { checkpoint ->
+            // given
+            val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+
+            // then NOT
+            eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
+                fail("Connecting failure should not get propagated when client was closed before")
+            }
+
+            // when
+            sut.close()
+            downStreamTimeout()
+
+            // We delay the end so the reconnecting start consumer would be called in async fashion
+            launch {
+                delay(2000)
+                checkpoint.flag()
+            }
+        }
+
+    @Test
+    internal fun too_many_commands_at_once(testContext: VertxTestContext) = testContext.async() {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
         val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
-        // then NOT
-        eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
-            fail("Connecting failure should not get propagated when client was closed before")
+        // The must be able to execute a number of commands according to max pool size
+        coroutineScope {
+            repeat(redisHeimdallOptions.maxPoolSize) {
+                launch {
+                    sut.verifyConnectivityWithPingPongBySend()
+                }
+            }
         }
 
-        // when
-        sut.close()
-        downStreamTimeout()
+        // On too many parallel commands, some of them must fail because the client becomes busy.
+        var failedCommandCount = 0
+        coroutineScope {
+            repeat(redisHeimdallOptions.maxPoolSize * 10) {
+                launch {
+                    runCatching { sut.sendPing() }
+                        .onFailure {
+                            testContext.verify {
+                                val heimdallException = it.shouldBeInstanceOf<RedisHeimdallException>()
+                                heimdallException.reason.shouldBe(Reason.CLIENT_BUSY)
+                            }
+                            failedCommandCount++
+                        }
+                }
+            }
+        }
 
-        // We delay the end so the reconnecting start consumer would be called in async fashion
-        launch {
-            delay(2000)
-            checkpoint.flag()
+        failedCommandCount.shouldBeGreaterThan(0)
+
+        // The must be able to execute a number of commands according to max pool size again
+        coroutineScope {
+            repeat(redisHeimdallOptions.maxPoolSize) {
+                launch {
+                    sut.verifyConnectivityWithPingPongBySend()
+                }
+            }
         }
     }
 

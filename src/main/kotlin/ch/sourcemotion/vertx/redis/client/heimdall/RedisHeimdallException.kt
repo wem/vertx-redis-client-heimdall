@@ -37,6 +37,11 @@ class RedisHeimdallException(val reason: Reason, message: String? = null, cause:
         CONNECTION_ISSUE,
 
         /**
+         * If the user of the client tries to execute too many commands at once.
+         */
+        CLIENT_BUSY,
+
+        /**
          * If the underlying client throws an unexpected exception type.
          */
         UNSPECIFIED

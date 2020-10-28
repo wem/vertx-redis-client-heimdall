@@ -2,12 +2,14 @@ package ch.sourcemotion.vertx.redis.client.heimdall.impl
 
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdall
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException
+import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException.Reason
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.connection.RedisHeimdallConnection
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.reconnect.DefaultRedisReconnectProcess
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.reconnect.NoopRedisReconnectProcess
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.reconnect.RedisReconnectProcess
 import io.vertx.core.*
+import io.vertx.core.http.ConnectionPoolTooBusyException
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.redis.client.Redis
 import io.vertx.redis.client.RedisConnection
@@ -41,7 +43,7 @@ internal open class RedisHeimdallImpl(
             handler.handle(
                 Future.failedFuture(
                     RedisHeimdallException(
-                        RedisHeimdallException.Reason.ACCESS_DURING_RECONNECT,
+                        Reason.ACCESS_DURING_RECONNECT,
                         "Client is in reconnection process"
                     )
                 )
@@ -64,8 +66,21 @@ internal open class RedisHeimdallImpl(
                     ).initConnection()
                 handler.handle(Future.succeededFuture(connection))
             } else {
-                handler.handle(Future.failedFuture(asyncConnection.cause()))
-                handleConnectionFailure(asyncConnection.cause())
+                val cause = asyncConnection.cause()
+                if (cause is ConnectionPoolTooBusyException) {
+                    handler.handle(
+                        Future.failedFuture(
+                            RedisHeimdallException(
+                                Reason.CLIENT_BUSY,
+                                "Too many commands to Redis at once, please use a rate limiting or increase RedisOptions.maxPoolSize",
+                                asyncConnection.cause()
+                            )
+                        )
+                    )
+                } else {
+                    handleConnectionFailure(asyncConnection.cause())
+                    handler.handle(Future.failedFuture(RedisHeimdallException(Reason.CONNECTION_ISSUE, cause = asyncConnection.cause())))
+                }
             }
         }
         return this
@@ -85,13 +100,7 @@ internal open class RedisHeimdallImpl(
         }
         // Avoid multiple, parallel reconnection processes
         if (reconnectingInProgress) {
-            logger.trace(
-                "Avoid multiple reconnect processes for Redis client to server(s) ${options.endpointsToString()}",
-                RedisHeimdallException(
-                    RedisHeimdallException.Reason.INTERNAL,
-                    "Multiple parallel reconnect processes"
-                )
-            )
+            logger.trace("Avoid multiple reconnect processes for Redis client to server(s) ${options.endpointsToString()}")
             return
         }
 
