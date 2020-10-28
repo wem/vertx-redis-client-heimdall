@@ -137,19 +137,24 @@ internal class RedisHeimdallSubscriptionImpl(
 
     override fun close() {
         if (closed.not()) {
-            // We need to close the connection here, so it will go back to pool and closed by delegated client.
-            subscriptionConnection?.close()
-            subscriptionConnection = null
+            runCatching {
+                releaseSubscriptionConnection()
+            }
+            runCatching { subscriptionStore.close() }
             super.close()
-            subscriptionStore.close()
         }
     }
 
     override fun cleanupBeforeReconnecting() {
-        // We null the connection before reconnecting, so afterwards a new connection could / should be used.
+        // We release the connection before reconnecting, so afterwards a new connection could / should be used.
+        releaseSubscriptionConnection()
+        super.cleanupBeforeReconnecting()
+    }
+
+    private fun releaseSubscriptionConnection() {
+        // Close the connection, so it will go back to pool and closed by delegated client.
         subscriptionConnection?.close()
         subscriptionConnection = null
-        super.cleanupBeforeReconnecting()
     }
 
     override fun getConnectionImplementation(

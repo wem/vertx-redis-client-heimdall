@@ -29,8 +29,10 @@ internal open class RedisHeimdallImpl(
     private val reconnectingHandler: RedisReconnectProcess = configureRedisConnectionFailureHandler()
 
     init {
-        vertx.orCreateContext.addCloseHook {
-            close()
+        vertx.orCreateContext.addCloseHook { closingHandler ->
+            runCatching { close() }
+                .onSuccess { closingHandler.handle(Future.succeededFuture()) }
+                .onFailure { closingHandler.handle(Future.failedFuture(it)) }
         }
     }
 
@@ -72,8 +74,7 @@ internal open class RedisHeimdallImpl(
     override fun close() {
         if (closed.not()) {
             closed = true
-            val closeResult = delegate.runCatching { close() }
-            closeResult.exceptionOrNull()?.let { throw it }
+            delegate.close()
         }
     }
 
