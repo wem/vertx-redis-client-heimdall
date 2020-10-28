@@ -147,7 +147,9 @@ internal class RedisHeimdallSubscriptionImpl(
 
     override fun cleanupBeforeReconnecting() {
         // We null the connection before reconnecting, so afterwards a new connection could / should be used.
+        subscriptionConnection?.close()
         subscriptionConnection = null
+        super.cleanupBeforeReconnecting()
     }
 
     override fun getConnectionImplementation(

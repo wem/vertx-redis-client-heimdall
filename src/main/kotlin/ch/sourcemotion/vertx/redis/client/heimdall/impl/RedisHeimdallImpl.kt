@@ -105,9 +105,6 @@ internal open class RedisHeimdallImpl(
             logger.warn(logMsg)
         }
 
-        // Close delegate, so all resource get free
-        delegate.close()
-
         cleanupBeforeReconnecting()
 
         sendReconnectingStartEvent(cause)
@@ -161,5 +158,8 @@ internal open class RedisHeimdallImpl(
         connectionIssueHandler: Handler<Throwable>
     ) = RedisHeimdallConnection(delegateConnection, connectionIssueHandler)
 
-    open fun cleanupBeforeReconnecting() {}
+    open fun cleanupBeforeReconnecting() {
+        // Close delegate, so all resource get free
+        delegate.close()
+    }
 }
