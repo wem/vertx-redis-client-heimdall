@@ -15,4 +15,14 @@
 ### Fixed
 #### Handle client is busy (hardening)
 - Cover the case if the user is trying to execute too many commands at once -> ConnectionPoolTooBusyException. 
-A RedisHeimdallException (with CLIENT_BUSY reason) exception will get thrown, and the reconnecting process will NOT get started. 
+A RedisHeimdallException (with CLIENT_BUSY reason) exception will get thrown, and the reconnecting process will NOT get started.
+ 
+## [0.0.4]
+### Fixed
+#### Handle closed channel exception (hardening)
+- Closed channel exception is now proper handled and will initiate the reconnecting process.
+### Improvement
+#### Previous delegated client closed later
+- In some scenarios, like under heavy load and retry like usage of the Heimdall client in the case of failure. It could be
+the case that's during the reconnection process still some commands are in flight (they executed before reconnect) and are able to success.
+Now the Heimdall client will keep the previous delegated client open until a "fresh", reconnected delegate is available. 
