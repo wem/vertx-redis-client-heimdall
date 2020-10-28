@@ -5,7 +5,9 @@ import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException.Reason
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractRedisTest
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.shouldBePongResponse
+import io.kotest.assertions.asClue
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -21,6 +23,7 @@ import io.vertx.redis.client.Request
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 
@@ -224,7 +227,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         }
 
     @Test
-    internal fun too_many_commands_at_once(testContext: VertxTestContext) = testContext.async() {
+    internal fun too_many_commands_at_once(testContext: VertxTestContext) = testContext.async {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
         val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
@@ -261,6 +264,66 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
             repeat(redisHeimdallOptions.maxPoolSize) {
                 launch {
                     sut.verifyConnectivityWithPingPongBySend()
+                }
+            }
+        }
+    }
+
+    @RepeatedTest(10)
+    internal fun close_connection_while_send_commands_in_flight(testContext: VertxTestContext) {
+        val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+        val commandCount = redisHeimdallOptions.maxPoolSize
+
+        testContext.async(commandCount) { checkpoint ->
+            val expectedExceptionReasons = listOf(Reason.CONNECTION_ISSUE, Reason.ACCESS_DURING_RECONNECT)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+
+            coroutineScope {
+                repeat(commandCount) { commandNbr ->
+                    if (commandNbr == commandCount / 2) {
+                        closeConnection()
+                    }
+                    launch {
+                        runCatching { sut.verifyConnectivityWithPingPongBySend() }
+                            .onFailure { cause ->
+                                testContext.verify {
+                                    val heimdallException = cause.shouldBeInstanceOf<RedisHeimdallException>()
+                                    expectedExceptionReasons.shouldContain(heimdallException.reason)
+                                }
+                            }
+                        checkpoint.flag()
+                    }
+                }
+            }
+        }
+    }
+
+    @RepeatedTest(10)
+    internal fun close_connection_while_batches_in_flight(testContext: VertxTestContext) {
+        val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+        val commandCount = redisHeimdallOptions.maxPoolSize
+
+        testContext.async(commandCount) { checkpoint ->
+            val expectedExceptionReasons = listOf(Reason.CONNECTION_ISSUE, Reason.ACCESS_DURING_RECONNECT)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+
+            coroutineScope {
+                repeat(commandCount) { commandNbr ->
+                    val commandDelay = (commandNbr * 10).toLong()
+                    delay(commandDelay)
+                    launch {
+                        runCatching { sut.verifyConnectivityWithPingPongByBatch() }
+                            .onFailure { cause ->
+                                testContext.verify {
+                                    val heimdallException = cause.shouldBeInstanceOf<RedisHeimdallException>()
+                                    expectedExceptionReasons.shouldContain(heimdallException.reason)
+                                }
+                            }
+                        checkpoint.flag()
+                    }
+                    if (commandNbr == commandCount / 2) {
+                        closeConnection()
+                    }
                 }
             }
         }

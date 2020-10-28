@@ -47,6 +47,13 @@ internal abstract class AbstractRedisTest : AbstractVertxTest() {
         delay(2)
     }
 
+    suspend fun closeConnection() {
+        timeout(DOWNSTREAM_TIMEOUT_TOXIC_NAME, ToxicDirection.DOWNSTREAM)
+        timeout(UPSTREAM_TIMEOUT_TOXIC_NAME, ToxicDirection.UPSTREAM)
+        // Ensure toxiproxy git enough time to close
+        delay(2)
+    }
+
     suspend fun upStreamTimeout() {
         timeout(UPSTREAM_TIMEOUT_TOXIC_NAME, ToxicDirection.UPSTREAM)
         // Ensure toxiproxy git enough time to close

@@ -42,10 +42,7 @@ internal open class RedisHeimdallImpl(
         if (reconnectingInProgress) {
             handler.handle(
                 Future.failedFuture(
-                    RedisHeimdallException(
-                        Reason.ACCESS_DURING_RECONNECT,
-                        "Client is in reconnection process"
-                    )
+                    RedisHeimdallException(Reason.ACCESS_DURING_RECONNECT, "Client is in reconnection process")
                 )
             )
         }
@@ -79,7 +76,11 @@ internal open class RedisHeimdallImpl(
                     )
                 } else {
                     handleConnectionFailure(asyncConnection.cause())
-                    handler.handle(Future.failedFuture(RedisHeimdallException(Reason.CONNECTION_ISSUE, cause = asyncConnection.cause())))
+                    handler.handle(
+                        Future.failedFuture(
+                            RedisHeimdallException(Reason.CONNECTION_ISSUE, cause = asyncConnection.cause())
+                        )
+                    )
                 }
             }
         }
@@ -121,6 +122,10 @@ internal open class RedisHeimdallImpl(
 
         reconnectingHandler.startReconnectProcess(cause) { asyncReconnected ->
             if (asyncReconnected.succeeded()) {
+                // We close the previous connection after successful reconnect, because during reconnect there can be still tasks on the fly.
+                runCatching {
+                    delegate.close()// Close previous delegate, so all resource get free
+                }
                 delegate = asyncReconnected.result()
                 reconnectingInProgress = false
 
@@ -168,8 +173,5 @@ internal open class RedisHeimdallImpl(
         connectionIssueHandler: Handler<Throwable>
     ) = RedisHeimdallConnection(delegateConnection, connectionIssueHandler)
 
-    open fun cleanupBeforeReconnecting() {
-        // Close delegate, so all resource get free
-        delegate.close()
-    }
+    open fun cleanupBeforeReconnecting() {}
 }
