@@ -2,7 +2,7 @@ package ch.sourcemotion.vertx.redis.client.heimdall
 
 import io.vertx.redis.client.RedisOptions
 
-class RedisHeimdallOptions(other: RedisOptions?) : RedisOptions(other) {
+open class RedisHeimdallOptions @JvmOverloads constructor(other: RedisOptions = RedisOptions()) : RedisOptions(other) {
 
     companion object {
         const val DEFAULT_RECONNECT = true
@@ -52,7 +52,34 @@ class RedisHeimdallOptions(other: RedisOptions?) : RedisOptions(other) {
      */
     var reconnectingFailedNotificationAddress = DEFAULT_RECONNECTING_FAILED_NOTIFICATION_ADDRESS
 
-    constructor() : this(RedisHeimdallOptions())
+    fun setReconnect(reconnect: Boolean) = this.apply { this.reconnect = reconnect }
+    fun setReconnectInterval(reconnectInterval: Long) = this.apply { this.reconnectInterval = reconnectInterval }
+    fun setMaxReconnectAttempts(maxReconnectAttempts: Int) =
+        this.apply { this.maxReconnectAttempts = maxReconnectAttempts }
+
+    fun setReconnectingNotifications(reconnectingNotifications: Boolean) =
+        this.apply { this.reconnectingNotifications = reconnectingNotifications }
+
+    fun setReconnectingStartNotificationAddress(reconnectingStartNotificationAddress: String) =
+        this.apply { this.reconnectingStartNotificationAddress = reconnectingStartNotificationAddress }
+
+    fun setReconnectingSucceededNotificationAddress(reconnectingSucceededNotificationAddress: String) =
+        this.apply { this.reconnectingSucceededNotificationAddress = reconnectingSucceededNotificationAddress }
+
+    fun setReconnectingFailedNotificationAddress(reconnectingFailedNotificationAddress: String) =
+        this.apply { this.reconnectingFailedNotificationAddress = reconnectingFailedNotificationAddress }
+
+    init {
+        if (other is RedisHeimdallOptions) {
+            reconnect = other.reconnect
+            reconnectInterval = other.reconnectInterval
+            maxReconnectAttempts = other.maxReconnectAttempts
+            reconnectingNotifications = other.reconnectingNotifications
+            reconnectingStartNotificationAddress = other.reconnectingStartNotificationAddress
+            reconnectingSucceededNotificationAddress = other.reconnectingSucceededNotificationAddress
+            reconnectingFailedNotificationAddress = other.reconnectingFailedNotificationAddress
+        }
+    }
 
     fun endpointsToString() = endpoints.joinToString(",")
 }
