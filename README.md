@@ -78,49 +78,53 @@ This client is designed to use it for subscriptions only, but also with reconnec
 
 **Java**
 ```java
-final List<String> channelNames = Collections.singletonList("channel-to-subscribe");
+final RedisHeimdallSubscriptionOptions options = new RedisHeimdallSubscriptionOptions().addChannelNames("channel-to-subscribe").addChannelPatterns(""channel-pattern-to-subscribe"")
 final Handler<SubscriptionMessage> messageHandler = message -> {
     // Will called for message(s) by Redis subscription
 };
-RedisHeimdallSubscription.create(vertx, new RedisHeimdallOptions(), channelNames, messageHandler, client -> {
+RedisHeimdallSubscription.create(vertx, options, messageHandler, client -> {
     // Reference to subscription client
 });
 ```
 
 **Kotlin**
 ```kotlin
-val channelNames = listOf("channel-to-subscribe")
+val options = RedisHeimdallSubscriptionOptions().addChannelNames("channel-to-subscribe").addChannelPatterns("channel-pattern-to-subscribe")
 val messageHandler = Handler<SubscriptionMessage> {
     // Will called for message(s) by Redis subscription
 }
-val client = RedisHeimdallSubscription.createAwait(vertx, RedisHeimdallOptions(), channelNames, messageHandler)
+val client = RedisHeimdallSubscription.createAwait(vertx, options, messageHandler)
 ```
 
 #### Start (channel subscription)
 The subscription client will subscribe on the passed channel names immediately after instantiation.
 **If you don't want to subscribe on any channels at this point you can pass an empty channel name list.**
 
-#### Add / remove channel to / from subscription
+#### Add / remove channel (pattern) to / from subscription
 The subscription client provided functions to add and remove channels during runtime
 
 **Add**
 ```kotlin
-fun addChannel(channelName: String,handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+fun addChannels(vararg channelNames: String, handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+fun addChannelPatterns(vararg channelPatterns: String,handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
 ```
 
 Suspend variant
 ``` kotlin
-suspend fun addChannelAwait(channelName: String): RedisHeimdallSubscription
+suspend fun addChannelsAwait(vararg channelNames: String): RedisHeimdallSubscription
+suspend fun addChannelPatternsAwait(vararg channelPatterns: String): RedisHeimdallSubscription
 ```
 
 **Remove**
 ```kotlin
-fun removeChannel(channelName: String,handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+fun removeChannels(vararg channelNames: String, handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+fun removeChannelPatterns(vararg channelPatterns: String,handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
 ```
 
 Suspend variant
 ```kotlin
-suspend fun removeChannelAwait(channelName: String): RedisHeimdallSubscription
+suspend fun removeChannelsAwait(vararg channelNames: String): RedisHeimdallSubscription
+suspend fun removeChannelPatternsAwait(vararg channelPatterns: String): RedisHeimdallSubscription
 ```
 
 ### Reconnect
