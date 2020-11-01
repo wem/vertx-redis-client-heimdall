@@ -24,7 +24,7 @@ import io.vertx.redis.client.impl.types.ErrorType
 import org.junit.jupiter.api.Test
 import java.nio.channels.ClosedChannelException
 
-internal class RedisSubscriptionHeimdallConnectionTest : AbstractVertxTest() {
+internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
 
     @Test
     internal fun register_message_handler_not_permitted() {
@@ -249,13 +249,13 @@ internal class RedisSubscriptionHeimdallConnectionTest : AbstractVertxTest() {
         },
         subscriptionStore: SubscriptionStore = mockk(),
         messageHandler: Handler<Response> = mockk()
-    ): RedisSubscriptionHeimdallConnection {
-        return RedisSubscriptionHeimdallConnection(
+    ): RedisHeimdallSubscriptionConnection {
+        return RedisHeimdallSubscriptionConnection(
             delegate,
             connectionIssueHandler,
             subscriptionStore,
             messageHandler
-        ).initConnection() as RedisSubscriptionHeimdallConnection
+        ).initConnection() as RedisHeimdallSubscriptionConnection
     }
 
     private fun createRedisConnectionMock(sendBatchCause: Throwable? = null, block: (RedisConnection.() -> Unit)? = null) =

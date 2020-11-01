@@ -8,7 +8,6 @@ import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
-import io.vertx.kotlin.core.undeployAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.Request
@@ -25,7 +24,7 @@ internal class CloseTest : AbstractRedisTest() {
             object : CoroutineVerticle() {
                 private val client by lazy(NONE) { RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions()) }
                 override suspend fun start() {
-                    client.send(Request.cmd(Command.PING),testContext.succeeding {
+                    client.send(Request.cmd(Command.PING), testContext.succeeding {
                         testContext.verify {
                             "$it".shouldBe("PONG")
                         }
@@ -42,7 +41,9 @@ internal class CloseTest : AbstractRedisTest() {
             object : CoroutineVerticle() {
                 private lateinit var client: RedisHeimdallSubscription
                 override suspend fun start() {
-                    client = RedisHeimdallSubscription.createAwait(vertx, getDefaultRedisHeimdallOptions(), listOf("test-channel")) {}
+                    val redisHeimdallSubscriptionOptions =
+                        getDefaultRedisHeimdallSubscriptionOptions().addChannelNames("test-channel")
+                    client = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallSubscriptionOptions) {}
                 }
             }
         }, deploymentOptionsOf())

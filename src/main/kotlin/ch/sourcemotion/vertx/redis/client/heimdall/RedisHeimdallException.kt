@@ -42,6 +42,11 @@ class RedisHeimdallException(val reason: Reason, message: String? = null, cause:
         CLIENT_BUSY,
 
         /**
+         * If the [ch.sourcemotion.vertx.redis.client.heimdall.subscription.RedisHeimdallSubscription] was not able to start
+         */
+        UNABLE_TO_START,
+
+        /**
          * If the underlying client throws an unexpected exception type.
          */
         UNSPECIFIED

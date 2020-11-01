@@ -1,7 +1,7 @@
 package ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription
 
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.PostReconnectJob
-import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.connection.RedisSubscriptionHeimdallConnection
+import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.connection.RedisHeimdallSubscriptionConnection
 import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
@@ -17,7 +17,7 @@ object SubscriptionPostReconnectJob : PostReconnectJob {
         redis.connect {
             if (it.succeeded()) {
                 val connection = it.result()
-                if (connection is RedisSubscriptionHeimdallConnection) {
+                if (connection is RedisHeimdallSubscriptionConnection) {
                     // Subscribe to channels after reconnect
                     connection.subscribeAfterReconnect(handler)
                 } else {

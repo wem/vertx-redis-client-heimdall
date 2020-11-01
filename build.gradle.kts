@@ -47,6 +47,7 @@ dependencies {
     testImplementation(vertx("junit5"))
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:toxiproxy")
+    testImplementation("eu.rekawek.toxiproxy:toxiproxy-java:2.1.4")
     testImplementation("io.kotest:kotest-assertions-core-jvm:$version_kotest")
     testImplementation("org.apache.logging.log4j:log4j-slf4j-impl")
     testImplementation("org.apache.logging.log4j:log4j-core")

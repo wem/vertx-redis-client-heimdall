@@ -1,6 +1,5 @@
 package ch.sourcemotion.vertx.redis.client.heimdall.subscription
 
-import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.RedisHeimdallSubscriptionImpl
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
@@ -21,40 +20,41 @@ interface RedisHeimdallSubscription : AutoCloseable {
         @JvmStatic
         fun create(
             vertx: Vertx,
-            options: RedisHeimdallOptions,
-            channelNames: List<String>,
+            options: RedisHeimdallSubscriptionOptions,
             messageHandler: Handler<SubscriptionMessage>,
             handler: Handler<AsyncResult<RedisHeimdallSubscription>>
-        ) = RedisHeimdallSubscriptionImpl(vertx, options, channelNames, messageHandler).start(handler)
+        ) = RedisHeimdallSubscriptionImpl(vertx, options, messageHandler).start(handler)
 
         /**
          * Kotlin variant of create function.
          */
         suspend fun createAwait(
             vertx: Vertx,
-            options: RedisHeimdallOptions,
-            channelNames: List<String> = emptyList(),
+            options: RedisHeimdallSubscriptionOptions,
             messageHandler: Handler<SubscriptionMessage>
-        ): RedisHeimdallSubscription = awaitResult { create(vertx, options, channelNames, messageHandler, it) }
+        ): RedisHeimdallSubscription = awaitResult { create(vertx, options, messageHandler, it) }
     }
 
-    fun addChannel(
-        channelName: String,
+    fun addChannels(vararg channelNames: String, handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+
+    suspend fun addChannelsAwait(vararg channelNames: String): RedisHeimdallSubscription
+    fun removeChannels(vararg channelNames: String, handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+
+    suspend fun removeChannelsAwait(vararg channelNames: String): RedisHeimdallSubscription
+
+    fun addChannelPatterns(
+        vararg channelPatterns: String,
         handler: Handler<AsyncResult<Response>>
     ): RedisHeimdallSubscription
 
-    suspend fun addChannelAwait(
-        channelName: String
-    ): RedisHeimdallSubscription
+    suspend fun addChannelPatternsAwait(vararg channelPatterns: String): RedisHeimdallSubscription
 
-    fun removeChannel(
-        channelName: String,
+    fun removeChannelPatterns(
+        vararg channelPatterns: String,
         handler: Handler<AsyncResult<Response>>
     ): RedisHeimdallSubscription
 
-    suspend fun removeChannelAwait(
-        channelName: String
-    ): RedisHeimdallSubscription
+    suspend fun removeChannelPatternsAwait(vararg channelPatterns: String): RedisHeimdallSubscription
 
     override fun close()
 }

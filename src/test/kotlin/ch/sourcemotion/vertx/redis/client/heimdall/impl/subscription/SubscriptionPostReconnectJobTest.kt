@@ -1,7 +1,7 @@
 package ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription
 
+import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.connection.RedisHeimdallSubscriptionConnection
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractVertxTest
-import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.connection.RedisSubscriptionHeimdallConnection
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
@@ -85,7 +85,7 @@ internal class SubscriptionPostReconnectJobTest : AbstractVertxTest() {
     private fun createNonHeimdallConnection() = mockk<RedisConnection>()
 
     private fun createHeimdallConnection(reconnectFailureCase: Throwable? = null) =
-        mockk<RedisSubscriptionHeimdallConnection> {
+        mockk<RedisHeimdallSubscriptionConnection> {
             every { subscribeAfterReconnect(any()) } answers {
                 val handler = arg<Handler<AsyncResult<Unit>>>(0)
                 if (reconnectFailureCase != null) {

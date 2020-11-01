@@ -5,7 +5,6 @@ import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException.Reason
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractRedisTest
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.shouldBePongResponse
-import io.kotest.assertions.asClue
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
@@ -31,19 +30,19 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
 
     @Test
     internal fun send_successful(testContext: VertxTestContext) = testContext.async {
-        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions()).markAsTestClient()
         sut.verifyConnectivityWithPingPongBySend()
     }
 
     @Test
     internal fun batch_successful(testContext: VertxTestContext) = testContext.async {
-        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions()).markAsTestClient()
         sut.verifyConnectivityWithPingPongByBatch()
     }
 
     @Test
     internal fun send_fast_fail_while_reconnect_in_progress(testContext: VertxTestContext) = testContext.async {
-        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions()).markAsTestClient()
 
         downStreamTimeout()
         // Initiate reconnection process
@@ -56,7 +55,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     @Test
     internal fun batch_fast_fail_while_reconnect_in_progress(testContext: VertxTestContext) = testContext.async {
         // given
-        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions())
+        val sut = RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions()).markAsTestClient()
 
         // when
         downStreamTimeout()
@@ -74,7 +73,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         testContext.async(2) { checkpoint ->
             // given
             val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
-            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
             // then
             eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
@@ -108,7 +107,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         testContext.async(2) { checkpoint ->
             // given
             val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
-            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
             // then
             eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
@@ -145,7 +144,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
                 reconnectInterval = 10
                 maxReconnectAttempts = 1
             }
-            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
             // then
             eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
@@ -178,7 +177,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
                 reconnectInterval = 10
                 maxReconnectAttempts = 1
             }
-            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
             // then
             eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
@@ -208,7 +207,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         testContext.async(1) { checkpoint ->
             // given
             val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
-            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
             // then NOT
             eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
@@ -229,7 +228,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     @Test
     internal fun too_many_commands_at_once(testContext: VertxTestContext) = testContext.async {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
-        val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+        val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
         // The must be able to execute a number of commands according to max pool size
         coroutineScope {
@@ -276,7 +275,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
 
         testContext.async(commandCount) { checkpoint ->
             val expectedExceptionReasons = listOf(Reason.CONNECTION_ISSUE, Reason.ACCESS_DURING_RECONNECT)
-            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
             coroutineScope {
                 repeat(commandCount) { commandNbr ->
@@ -305,7 +304,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
 
         testContext.async(commandCount) { checkpoint ->
             val expectedExceptionReasons = listOf(Reason.CONNECTION_ISSUE, Reason.ACCESS_DURING_RECONNECT)
-            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
             coroutineScope {
                 repeat(commandCount) { commandNbr ->

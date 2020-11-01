@@ -10,26 +10,43 @@ internal class SubscriptionStore(
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(SubscriptionStore::class.java)
-        const val SUBSCRIPTION_LIST = "redis-heimdall-subscription-map"
+        const val CHANNEL_LIST = "redis-heimdall-channel-list"
+        const val PATTERN_LIST = "redis-heimdall-pattern-list"
 
         fun Vertx.createSubscriptionStore(clientInstanceId: ClientInstanceId) =
             SubscriptionStore(this.sharedData().getLocalMap("$clientInstanceId"))
     }
 
-    fun subscriptions(): Set<String>? = delegate[SUBSCRIPTION_LIST]
+    fun subscriptions(): Set<String>? = delegate[CHANNEL_LIST]
+    fun patterns(): Set<String>? = delegate[PATTERN_LIST]
 
     fun addSubscription(channelName: String) {
-        val subscriptions = delegate[SUBSCRIPTION_LIST] ?: ShareableList()
+        val subscriptions = delegate[CHANNEL_LIST] ?: ShareableList()
         val added = subscriptions.add(channelName)
-        delegate[SUBSCRIPTION_LIST] = subscriptions
+        delegate[CHANNEL_LIST] = subscriptions
         if (added) {
-            logger.debug("Subscription channel \"$channelName\" stored")
+            logger.debug("Subscription channel name \"$channelName\" stored")
         }
     }
 
-    fun removeSubscription(channelName: String) = delegate[SUBSCRIPTION_LIST]?.remove(channelName).also {
+    fun addPattern(channelPattern: String) {
+        val patterns = delegate[PATTERN_LIST] ?: ShareableList()
+        val added = patterns.add(channelPattern)
+        delegate[PATTERN_LIST] = patterns
+        if (added) {
+            logger.debug("Subscription channel pattern \"$channelPattern\" stored")
+        }
+    }
+
+    fun removeSubscription(channelName: String) = delegate[CHANNEL_LIST]?.remove(channelName).also {
         if (it == true) {
             logger.debug("Subscription channel \"$channelName\" removed from store")
+        }
+    }
+
+    fun removePattern(channelPattern: String) = delegate[PATTERN_LIST]?.remove(channelPattern).also {
+        if (it == true) {
+            logger.debug("Subscription channel pattern \"$channelPattern\" removed from store")
         }
     }
 
