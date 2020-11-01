@@ -13,11 +13,17 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.mockk.every
+import io.mockk.mockk
+import io.vertx.core.AsyncResult
+import io.vertx.core.Future
+import io.vertx.core.Handler
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.redis.client.batchAwait
 import io.vertx.kotlin.redis.client.sendAwait
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.Redis
+import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -327,6 +333,57 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
             }
         }
     }
+
+    @Test
+    internal fun exception_handling_connect_failure(testContext: VertxTestContext) =
+        testContext.async(1) { checkpoint ->
+
+            val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
+                checkpoint.flag()
+            }
+
+            val expectedRootCause = Exception("Test cause")
+
+            val failingDelegate = mockk<Redis> {
+                every { connect(any()) } answers {
+                    val handler = arg<Handler<AsyncResult<RedisConnection>>>(0)
+                    handler.handle(Future.failedFuture(expectedRootCause))
+                    this@mockk
+                }
+            }
+
+            // Little bit hacky, but to make the delegate accessible from outside would also be bad.
+            val sut = RedisHeimdallImpl(vertx, redisHeimdallOptions)
+            val delegateField = sut::class.java.getDeclaredField("delegate")
+            delegateField.isAccessible = true
+            delegateField.set(sut, failingDelegate)
+
+            sut.connect(testContext.failing { cause ->
+                cause.shouldBeInstanceOf<RedisHeimdallException>()
+                cause.reason.shouldBe(Reason.CONNECTION_ISSUE)
+                cause.cause.shouldBe(expectedRootCause)
+            })
+        }
+
+    @Test
+    internal fun failing_post_reconnect_job_will_start_reconnect_again(testContext: VertxTestContext) =
+        testContext.async(2) { checkpoint ->
+            val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+            eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
+                checkpoint.flag()
+            }
+
+            val sut = RedisHeimdallImpl(
+                vertx,
+                redisHeimdallOptions,
+                listOf(PostReconnectJob { _, handler -> handler.handle(Future.failedFuture(Exception("Test exception"))) })
+            )
+
+            sut.verifyConnectivityWithPingPongBySend()
+
+            closeAndResumeConnection(redisHeimdallOptions)
+        }
 
     private suspend fun Redis.verifyConnectivityWithPingPongBySend() {
         val response = sendPing()
