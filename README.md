@@ -48,6 +48,11 @@ project, so the basic options are similar. The additional reconnect options have
 the client is ready to run out of the box. Please refer Javadoc of the options class for details 
 [Vert.x Redis Heimdall options](https://github.com/wem/vertx-redis-client-heimdall/blob/main/src/main/kotlin/ch/sourcemotion/vertx/redis/client/heimdall/RedisHeimdallOptions.kt).
 
+#### Jackson
+As this client implemented in Kotlin you should register the Jackson object mapper Kotlin module if you serialize
+`ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions` or `ch.sourcemotion.vertx.redis.client.heimdall.subscription.RedisHeimdallSubscriptionOptions`.
+This could be done with `DatabindCodec.mapper().registerKotlinModule()`.
+
 ### General purpose client
 
 The client with the same basic functionality as the original client (additionally with reconnect capabilities) can be instantiated as follows.

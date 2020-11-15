@@ -3,8 +3,7 @@ package ch.sourcemotion.vertx.redis.client.heimdall.subscription
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions
 import io.vertx.redis.client.RedisOptions
 
-class RedisHeimdallSubscriptionOptions @JvmOverloads constructor(other: RedisOptions = RedisOptions()) :
-    RedisHeimdallOptions(other) {
+open class RedisHeimdallSubscriptionOptions() : RedisHeimdallOptions() {
 
     /**
      * Channel names they will get subscribed at client instantiation.
@@ -18,8 +17,16 @@ class RedisHeimdallSubscriptionOptions @JvmOverloads constructor(other: RedisOpt
      */
     var channelPatterns = ArrayList<String>()
 
+    constructor(redisOptions: RedisOptions) : this() {
+        this.redisOptions = redisOptions
+    }
 
-    init {
+    constructor(other: RedisHeimdallOptions) : this() {
+        applyOther(other)
+    }
+
+    override fun applyOther(other: RedisHeimdallOptions) {
+        super.applyOther(other)
         if (other is RedisHeimdallSubscriptionOptions) {
             channelNames = other.channelNames
             channelPatterns = other.channelPatterns

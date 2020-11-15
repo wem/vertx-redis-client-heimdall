@@ -234,11 +234,12 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     @Test
     internal fun too_many_commands_at_once(testContext: VertxTestContext) = testContext.async {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+        val redisOptions = redisHeimdallOptions.redisOptions
         val sut = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
 
         // The must be able to execute a number of commands according to max pool size
         coroutineScope {
-            repeat(redisHeimdallOptions.maxPoolSize) {
+            repeat(redisOptions.maxPoolSize) {
                 launch {
                     sut.verifyConnectivityWithPingPongBySend()
                 }
@@ -248,7 +249,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         // On too many parallel commands, some of them must fail because the client becomes busy.
         var failedCommandCount = 0
         coroutineScope {
-            repeat(redisHeimdallOptions.maxPoolSize * 10) {
+            repeat(redisOptions.maxPoolSize * 10) {
                 launch {
                     runCatching { sut.sendPing() }
                         .onFailure {
@@ -266,7 +267,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
 
         // The must be able to execute a number of commands according to max pool size again
         coroutineScope {
-            repeat(redisHeimdallOptions.maxPoolSize) {
+            repeat(redisOptions.maxPoolSize) {
                 launch {
                     sut.verifyConnectivityWithPingPongBySend()
                 }
@@ -277,7 +278,8 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     @RepeatedTest(10)
     internal fun close_connection_while_send_commands_in_flight(testContext: VertxTestContext) {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
-        val commandCount = redisHeimdallOptions.maxPoolSize
+        val redisOptions = redisHeimdallOptions.redisOptions
+        val commandCount = redisOptions.maxPoolSize
 
         testContext.async(commandCount) { checkpoint ->
             val expectedExceptionReasons = listOf(Reason.CONNECTION_ISSUE, Reason.ACCESS_DURING_RECONNECT)
@@ -306,7 +308,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     @RepeatedTest(10)
     internal fun close_connection_while_batches_in_flight(testContext: VertxTestContext) {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
-        val commandCount = redisHeimdallOptions.maxPoolSize
+        val commandCount = redisHeimdallOptions.redisOptions.maxPoolSize
 
         testContext.async(commandCount) { checkpoint ->
             val expectedExceptionReasons = listOf(Reason.CONNECTION_ISSUE, Reason.ACCESS_DURING_RECONNECT)

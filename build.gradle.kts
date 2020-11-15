@@ -43,6 +43,7 @@ dependencies {
         exclude("org.jetbrains.kotlinx", "kotlinx-coroutines-core")
         exclude("org.jetbrains.kotlin", "*")
     }
+    api("com.fasterxml.jackson.module:jackson-module-kotlin:${dependencyManagement.importedProperties["jackson.version"]}")
 
     testImplementation(vertx("junit5"))
     testImplementation("org.testcontainers:junit-jupiter")

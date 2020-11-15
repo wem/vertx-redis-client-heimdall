@@ -24,7 +24,7 @@ internal open class RedisHeimdallImpl(
 
     protected var closed = false
 
-    private var delegate: Redis = Redis.createClient(vertx, options)
+    private var delegate: Redis = Redis.createClient(vertx, options.redisOptions)
 
     private var reconnectingInProgress = false
 

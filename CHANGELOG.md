@@ -33,4 +33,9 @@ Now the Heimdall client will keep the previous delegated client open until a "fr
 - The subscription client now have full support for PSUBSCRIBE.
 ### Improvement
 #### RedisHeimdallSubscriptionOptions
-- Introducing of options class for the subscription client. 
+- Introducing of options class for the subscription client.
+ 
+## [0.0.6]
+### Fix
+#### Jackson serialization issue of Options
+- Jackson deserialization issues with Options.

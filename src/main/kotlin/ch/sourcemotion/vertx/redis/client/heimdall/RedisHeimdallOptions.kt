@@ -2,7 +2,7 @@ package ch.sourcemotion.vertx.redis.client.heimdall
 
 import io.vertx.redis.client.RedisOptions
 
-open class RedisHeimdallOptions @JvmOverloads constructor(other: RedisOptions = RedisOptions()) : RedisOptions(other) {
+open class RedisHeimdallOptions() {
 
     companion object {
         const val DEFAULT_RECONNECT = true
@@ -52,6 +52,8 @@ open class RedisHeimdallOptions @JvmOverloads constructor(other: RedisOptions = 
      */
     var reconnectingFailedNotificationAddress = DEFAULT_RECONNECTING_FAILED_NOTIFICATION_ADDRESS
 
+    var redisOptions: RedisOptions = RedisOptions()
+
     fun setReconnect(reconnect: Boolean) = this.apply { this.reconnect = reconnect }
     fun setReconnectInterval(reconnectInterval: Long) = this.apply { this.reconnectInterval = reconnectInterval }
     fun setMaxReconnectAttempts(maxReconnectAttempts: Int) =
@@ -69,17 +71,27 @@ open class RedisHeimdallOptions @JvmOverloads constructor(other: RedisOptions = 
     fun setReconnectingFailedNotificationAddress(reconnectingFailedNotificationAddress: String) =
         this.apply { this.reconnectingFailedNotificationAddress = reconnectingFailedNotificationAddress }
 
-    init {
-        if (other is RedisHeimdallOptions) {
-            reconnect = other.reconnect
-            reconnectInterval = other.reconnectInterval
-            maxReconnectAttempts = other.maxReconnectAttempts
-            reconnectingNotifications = other.reconnectingNotifications
-            reconnectingStartNotificationAddress = other.reconnectingStartNotificationAddress
-            reconnectingSucceededNotificationAddress = other.reconnectingSucceededNotificationAddress
-            reconnectingFailedNotificationAddress = other.reconnectingFailedNotificationAddress
-        }
+    fun setRedisOptions(redisOptions: RedisOptions) =
+        this.apply { this.redisOptions = redisOptions }
+
+    constructor(redisOptions: RedisOptions) : this() {
+        this.redisOptions = redisOptions
     }
 
-    fun endpointsToString() = endpoints.joinToString(",")
+    constructor(other: RedisHeimdallOptions) : this() {
+        applyOther(other)
+    }
+
+    protected open fun applyOther(other: RedisHeimdallOptions) {
+        reconnect = other.reconnect
+        reconnectInterval = other.reconnectInterval
+        maxReconnectAttempts = other.maxReconnectAttempts
+        reconnectingNotifications = other.reconnectingNotifications
+        reconnectingStartNotificationAddress = other.reconnectingStartNotificationAddress
+        reconnectingSucceededNotificationAddress = other.reconnectingSucceededNotificationAddress
+        reconnectingFailedNotificationAddress = other.reconnectingFailedNotificationAddress
+        redisOptions = other.redisOptions
+    }
+
+    fun endpointsToString() = redisOptions.endpoints.joinToString(",")
 }

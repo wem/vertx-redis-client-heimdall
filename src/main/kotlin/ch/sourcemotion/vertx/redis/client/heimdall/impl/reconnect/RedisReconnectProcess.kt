@@ -67,7 +67,7 @@ internal class DefaultRedisReconnectProcess(
             handler.replyMaxNumberOfAttemptsReached(options.maxReconnectAttempts)
             return
         }
-        val client = Redis.createClient(vertx, options)
+        val client = Redis.createClient(vertx, options.redisOptions)
         client.connect { reconnect ->
             if (reconnect.succeeded()) {
                 val connection = reconnect.result()
