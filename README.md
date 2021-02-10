@@ -87,9 +87,7 @@ final RedisHeimdallSubscriptionOptions options = new RedisHeimdallSubscriptionOp
 final Handler<SubscriptionMessage> messageHandler = message -> {
     // Will called for message(s) by Redis subscription
 };
-RedisHeimdallSubscription.create(vertx, options, messageHandler, client -> {
-    // Reference to subscription client
-});
+final Future<RedisHeimdallSubscription> subscriptionFuture = RedisHeimdallSubscription.create(vertx, options, messageHandler);
 ```
 
 **Kotlin**
@@ -98,7 +96,7 @@ val options = RedisHeimdallSubscriptionOptions().addChannelNames("channel-to-sub
 val messageHandler = Handler<SubscriptionMessage> {
     // Will called for message(s) by Redis subscription
 }
-val client = RedisHeimdallSubscription.createAwait(vertx, options, messageHandler)
+val client = RedisHeimdallSubscription.create(vertx, options, messageHandler).await()
 ```
 
 #### Start (channel subscription)
@@ -110,8 +108,8 @@ The subscription client provides functions to add and remove channels during run
 
 **Add**
 ```kotlin
-fun addChannels(vararg channelNames: String, handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
-fun addChannelPatterns(vararg channelPatterns: String,handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+fun addChannels(vararg channelNames: String): Future<Response>
+fun addChannelPatterns(vararg channelPatterns: String): Future<Response>
 ```
 
 Suspend variant
@@ -122,8 +120,8 @@ suspend fun addChannelPatternsAwait(vararg channelPatterns: String): RedisHeimda
 
 **Remove**
 ```kotlin
-fun removeChannels(vararg channelNames: String, handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
-fun removeChannelPatterns(vararg channelPatterns: String,handler: Handler<AsyncResult<Response>>): RedisHeimdallSubscription
+fun removeChannels(vararg channelNames: String): Future<Response>
+fun removeChannelPatterns(vararg channelPatterns: String): Future<Response>
 ```
 
 Suspend variant

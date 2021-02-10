@@ -39,3 +39,8 @@ Now the Heimdall client will keep the previous delegated client open until a "fr
 ### Fix
 #### Jackson serialization issue of Options
 - Jackson deserialization issues with Options.
+
+## [1.0.0]
+### Feature
+#### Vert.x 4
+- Migration to Vert.x 4
