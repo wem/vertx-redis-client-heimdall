@@ -404,5 +404,5 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     private suspend fun Redis.sendPing() = send(Request.cmd(Command.PING)).await()
 
     private suspend fun Redis.sendPingBatch(pingCount: Int = 2) =
-        batchAwait(Array(pingCount) { Request.cmd(Command.PING) }.toList())
+        batch(Array(pingCount) { Request.cmd(Command.PING) }.toList()).await()
 }

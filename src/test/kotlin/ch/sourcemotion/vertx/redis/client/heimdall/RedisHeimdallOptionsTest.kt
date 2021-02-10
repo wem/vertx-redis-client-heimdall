@@ -14,6 +14,7 @@ import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import io.vertx.redis.client.RedisOptions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -110,7 +111,7 @@ internal class RedisHeimdallOptionsTest : AbstractVertxTest() {
 
     @Test
     internal fun redis_heimdall_options_as_verticle_options(testContext: VertxTestContext) = testContext.async {
-        vertx.deployVerticleAwait(
+        vertx.deployVerticle(
             VerticleHasRedisHeimdallOptions::class.java.name,
             deploymentOptionsOf(
                 config = JsonObject.mapFrom(
@@ -121,8 +122,8 @@ internal class RedisHeimdallOptionsTest : AbstractVertxTest() {
                     )
                 )
             )
-        )
-        eventBus.requestAwait<Boolean>(VerticleHasRedisHeimdallOptions.RECONNECT_VALUE_QUERY_ADDR, null).body()
+        ).await()
+        eventBus.request<Boolean>(VerticleHasRedisHeimdallOptions.RECONNECT_VALUE_QUERY_ADDR, null).await().body()
             .shouldBeFalse()
     }
 
@@ -130,7 +131,7 @@ internal class RedisHeimdallOptionsTest : AbstractVertxTest() {
     internal fun redis_heimdall_subscription_options_as_verticle_options(testContext: VertxTestContext) =
         testContext.async {
             val channelName = "some-channel"
-            vertx.deployVerticleAwait(
+            vertx.deployVerticle(
                 VerticleHasRedisHeimdallSubscriptionOptions::class.java.name,
                 deploymentOptionsOf(
                     config = JsonObject.mapFrom(
@@ -139,11 +140,11 @@ internal class RedisHeimdallOptionsTest : AbstractVertxTest() {
                         )
                     )
                 )
-            )
-            val replyMsg = eventBus.requestAwait<String>(
+            ).await()
+            val replyMsg = eventBus.request<String>(
                 VerticleHasRedisHeimdallSubscriptionOptions.CHANNEL_NAME_VALUE_QUERY_ADDR,
                 null
-            )
+            ).await()
             replyMsg.body().shouldBe(channelName)
         }
 }

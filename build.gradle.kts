@@ -6,9 +6,7 @@ plugins {
     id("com.jfrog.bintray") version "1.8.5"
     `maven-publish`
 }
-
-(System.getProperty("release_version") ?: findProperty("release_version"))?.let { version = it.toString() }
-
+val version_java = "11"
 val version_vertx = "4.0.2"
 val version_coroutines = "1.4.2"
 
@@ -19,10 +17,6 @@ val version_kotest = "4.4.1"
 val version_log4j = "2.13.3"
 val version_mockk = "1.10.5"
 val jackson_version = "2.11.3"
-
-repositories {
-    jcenter()
-}
 
 dependencies {
     implementation(platform("io.vertx:vertx-dependencies:$version_vertx"))
@@ -59,7 +53,7 @@ fun vertx(module: String): String = "io.vertx:vertx-$module"
 tasks {
     compileKotlin {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = version_java
             apiVersion = "1.4"
             languageVersion = "1.4"
             freeCompilerArgs = listOf("-Xinline-classes")
@@ -67,19 +61,19 @@ tasks {
     }
     compileTestKotlin {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = version_java
             apiVersion = "1.4"
             languageVersion = "1.4"
             freeCompilerArgs = listOf("-Xinline-classes")
         }
     }
     compileJava {
-        sourceCompatibility = "1.8"
-        targetCompatibility = "1.8"
+        sourceCompatibility = version_java
+        targetCompatibility = version_java
     }
     compileTestJava {
-        sourceCompatibility = "1.8"
-        targetCompatibility = "1.8"
+        sourceCompatibility = version_java
+        targetCompatibility = version_java
     }
     test {
         systemProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory")
@@ -107,8 +101,8 @@ bintray {
         userOrg = "michel-werren"
         vcsUrl = "https://github.com/wem/vertx-redis-client-heimdall"
         version(closureOf<com.jfrog.bintray.gradle.BintrayExtension.VersionConfig> {
-            name = project.version.toString()
-            released = Date().toString()
+            name = "${project.version}"
+            released = "${Date()}"
         })
         setLicenses("MIT")
     })
@@ -127,7 +121,7 @@ publishing {
             pom {
                 groupId = groupId
                 artifactId = artifactId
-                version = project.version.toString()
+                version = "${project.version}"
                 licenses {
                     license {
                         name.set("The MIT License")
