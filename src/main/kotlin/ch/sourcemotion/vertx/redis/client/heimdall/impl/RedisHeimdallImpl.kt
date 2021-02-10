@@ -10,9 +10,12 @@ import ch.sourcemotion.vertx.redis.client.heimdall.impl.reconnect.NoopRedisRecon
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.reconnect.RedisReconnectProcess
 import io.vertx.core.*
 import io.vertx.core.http.ConnectionPoolTooBusyException
+import io.vertx.core.impl.ContextInternal
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.redis.client.Redis
 import io.vertx.redis.client.RedisConnection
+import io.vertx.redis.client.Request
+import io.vertx.redis.client.Response
 
 internal open class RedisHeimdallImpl(
     protected val vertx: Vertx,
@@ -31,60 +34,100 @@ internal open class RedisHeimdallImpl(
     private val reconnectingHandler: RedisReconnectProcess = configureRedisConnectionFailureHandler()
 
     init {
-        vertx.orCreateContext.addCloseHook { closingHandler ->
-            runCatching { close() }
-                .onSuccess { closingHandler.handle(Future.succeededFuture()) }
-                .onFailure { closingHandler.handle(Future.failedFuture(it)) }
+        val ctx = vertx.orCreateContext
+        if (ctx is ContextInternal) {
+            ctx.addCloseHook { closingPromise ->
+                runCatching { close() }
+                    .onSuccess { closingPromise.complete() }
+                    .onFailure { closingPromise.fail(it) }
+            }
         }
     }
 
-    protected fun skipConnectBecauseReconnecting(handler: Handler<AsyncResult<RedisConnection>>): Boolean {
+    protected fun skipConnectBecauseReconnecting(promise: Promise<RedisConnection>): Boolean {
         if (reconnectingInProgress) {
-            handler.handle(
-                Future.failedFuture(
-                    RedisHeimdallException(Reason.ACCESS_DURING_RECONNECT, "Client is in reconnection process")
-                )
-            )
+            promise.fail(RedisHeimdallException(Reason.ACCESS_DURING_RECONNECT, "Client is in reconnection process"))
         }
         return reconnectingInProgress
     }
 
-    override fun connect(handler: Handler<AsyncResult<RedisConnection>>): Redis {
-        if (skipConnectBecauseReconnecting(handler)) {
-            return this
+    override fun connect(): Future<RedisConnection> {
+        val promise = Promise.promise<RedisConnection>()
+        if (skipConnectBecauseReconnecting(promise)) {
+            return promise.future()
         }
 
-        delegate.connect { asyncConnection ->
-            if (asyncConnection.succeeded()) {
-                val connection =
-                    getConnectionImplementation(
-                        asyncConnection.result(),
-                        this::handleConnectionFailure
-                    ).initConnection()
-                handler.handle(Future.succeededFuture(connection))
-            } else {
-                val cause = asyncConnection.cause()
+        delegate.connect()
+            .onSuccess { connection ->
+                val connectionImpl =
+                    getConnectionImplementation(connection, this::handleConnectionFailure).initConnection()
+                promise.complete(connectionImpl)
+            }
+            .onFailure { cause ->
                 if (cause is ConnectionPoolTooBusyException) {
-                    handler.handle(
-                        Future.failedFuture(
-                            RedisHeimdallException(
-                                Reason.CLIENT_BUSY,
-                                "Too many commands to Redis at once, please use a rate limiting or increase RedisOptions.maxPoolSize",
-                                asyncConnection.cause()
-                            )
+                    promise.fail(
+                        RedisHeimdallException(
+                            Reason.CLIENT_BUSY,
+                            "Too many commands to Redis at once, please use a rate limiting or increase RedisOptions.maxPoolSize",
+                            cause
                         )
                     )
                 } else {
-                    handleConnectionFailure(asyncConnection.cause())
-                    handler.handle(
-                        Future.failedFuture(
-                            RedisHeimdallException(Reason.CONNECTION_ISSUE, cause = asyncConnection.cause())
-                        )
-                    )
+                    handleConnectionFailure(cause)
+                    promise.fail(RedisHeimdallException(Reason.CONNECTION_ISSUE, cause = cause))
                 }
             }
+        return promise.future()
+    }
+
+    override fun send(command: Request): Future<Response> {
+        val promise = Promise.promise<Response>()
+
+        if (command.command().isPubSub) {
+            promise.fail(
+                RedisHeimdallException(
+                    Reason.UNSUPPORTED_ACTION,
+                    "Please use Redis Heimdall subscription client for PubSub"
+                )
+            )
+            return promise.future()
         }
-        return this
+
+        connect()
+            .onSuccess { conn: RedisConnection ->
+                conn.send(command)
+                    .onComplete { send: AsyncResult<Response> ->
+                        runCatching { conn.close() }
+                        promise.handle(send)
+                    }
+            }
+            .onFailure { promise.fail(it) }
+
+        return promise.future()
+    }
+
+    override fun batch(commands: List<Request>): Future<List<Response>> {
+        val promise = Promise.promise<List<Response>>()
+
+        for (req in commands) {
+            if (req.command().isPubSub) {
+                // mixing pubSub cannot be used on a one-shot operation
+                promise.fail("PubSub command in connection-less batch not allowed")
+                return promise.future()
+            }
+        }
+
+        connect()
+            .onSuccess { conn: RedisConnection ->
+                conn.batch(commands)
+                    .onComplete { send: AsyncResult<List<Response>> ->
+                        runCatching { conn.close() }
+                        promise.handle(send)
+                    }
+            }
+            .onFailure { promise.fail(it) }
+
+        return promise.future()
     }
 
     override fun close() {
@@ -120,26 +163,24 @@ internal open class RedisHeimdallImpl(
 
         sendReconnectingStartEvent(cause)
 
-        reconnectingHandler.startReconnectProcess(cause) { asyncReconnected ->
-            if (asyncReconnected.succeeded()) {
+        reconnectingHandler.startReconnectProcess(cause)
+            .onSuccess {
                 // We close the previous connection after successful reconnect, because during reconnect there can be still tasks on the fly.
                 runCatching {
                     delegate.close()// Close previous delegate, so all resource get free
                 }
-                delegate = asyncReconnected.result()
+                delegate = it
                 reconnectingInProgress = false
 
-                val jobs = postReconnectJobs.map { job -> Future.future<Unit> { job.execute(this, it) } }
+                val jobs = postReconnectJobs.map { job -> job.execute(this) }
                 val jobsResult = CompositeFuture.all(jobs)
+                jobsResult.onSuccess { sendReconnectingSucceededEvent() }
                 jobsResult.onFailure {
                     logger.warn("At least one post reconnect job did fail. So we re-initiate reconnection process")
                     handleConnectionFailure(cause)
                 }
-                jobsResult.onSuccess { sendReconnectingSucceededEvent() }
-            } else {
-                sendReconnectingFailedEvent(asyncReconnected.cause())
             }
-        }
+            .onFailure { sendReconnectingFailedEvent(it) }
     }
 
 

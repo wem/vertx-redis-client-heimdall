@@ -14,7 +14,7 @@ internal class NoopRedisReconnectProcessTest : AbstractVertxTest() {
     internal fun will_fail_immediately(testContext: VertxTestContext) = testContext.async(1) { checkpoint ->
         NoopRedisReconnectProcess(
             RedisHeimdallOptions(redisOptionsOf())
-        ).startReconnectProcess(Exception("Test exception")) {
+        ).startReconnectProcess(Exception("Test exception")).onComplete {
             testContext.verify {
                 it.failed().shouldBeTrue()
                 it.result().shouldBeNull()

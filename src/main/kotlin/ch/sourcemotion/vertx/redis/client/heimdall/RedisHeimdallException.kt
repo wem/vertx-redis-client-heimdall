@@ -3,7 +3,8 @@ package ch.sourcemotion.vertx.redis.client.heimdall
 /**
  * General purpose Exception type, used by this library to signal usage and state exceptions.
  */
-class RedisHeimdallException(val reason: Reason, message: String? = null, cause: Throwable? = null) : Exception(message, cause) {
+class RedisHeimdallException(val reason: Reason, message: String? = null, cause: Throwable? = null) :
+    Exception(message, cause) {
 
     enum class Reason {
         /**

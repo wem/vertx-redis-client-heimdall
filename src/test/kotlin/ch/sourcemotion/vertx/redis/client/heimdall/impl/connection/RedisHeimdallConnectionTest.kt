@@ -1,23 +1,23 @@
 package ch.sourcemotion.vertx.redis.client.heimdall.impl.connection
 
-import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractVertxTest
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallException.Reason
+import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractVertxTest
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
+import io.vertx.core.Promise
 import io.vertx.redis.client.Command
+import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
-import io.vertx.redis.client.impl.RedisConnectionImpl
 import io.vertx.redis.client.impl.types.ErrorType
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
@@ -25,47 +25,20 @@ import java.net.ConnectException
 
 internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
 
-    /**
-     * Tests more the mock as production code. But the basic concept is covered.
-     */
-    @Test
-    internal fun connection_issue_handler_called_on_end() {
-        // given
-        val delegate = mockk<RedisConnectionImpl> {
-            var mockEndHandler: Handler<Void?>? = null
-            every { endHandler(any()) } answers {
-                mockEndHandler = arg(0)
-                this@mockk
-            }
-
-            every { end(any()) } answers {
-                mockEndHandler?.handle(arg(0))
-            }
-        }
-
-        // then
-        RedisHeimdallConnection(delegate) {
-            it.shouldBeInstanceOf<RedisHeimdallException>().reason.shouldBe(Reason.CONNECTION_ISSUE)
-        }.initConnection()
-
-        // when
-        delegate.end(null)
-    }
-
     @Test
     internal fun connection_issue_delegated_on_send() {
         // given
         val rootCause = Exception("send-root-cause")
 
-        val delegate = mockk<RedisConnectionImpl> {
+        val delegate = mockk<RedisConnection> {
             var mockExceptionHandler: Handler<Throwable>? = null
             every { exceptionHandler(any()) } answers {
                 mockExceptionHandler = arg(0)
                 this@mockk
             }
-            every { send(any(), any()) } answers {
+            every { send(any()) } answers {
                 mockExceptionHandler?.handle(rootCause)
-                this@mockk
+                Promise.promise<Response>().future()
             }
             every { endHandler(any()) } answers { this@mockk }
         }
@@ -93,15 +66,15 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         // given
         val rootCause = Exception("send-root-cause")
 
-        val delegate = mockk<RedisConnectionImpl> {
+        val delegate = mockk<RedisConnection> {
             var mockExceptionHandler: Handler<Throwable>? = null
             every { exceptionHandler(any()) } answers {
                 mockExceptionHandler = arg(0)
                 this@mockk
             }
-            every { batch(any(), any()) } answers {
+            every { batch(any()) } answers {
                 mockExceptionHandler?.handle(rootCause)
-                this@mockk
+                Promise.promise<List<Response>>().future()
             }
             every { endHandler(any()) } answers { this@mockk }
         }
@@ -130,15 +103,7 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         // given
         val rootCause = ErrorType.create("CONNECTION_CLOSED")
 
-        val delegate = mockk<RedisConnectionImpl> {
-            every { exceptionHandler(any()) } answers { this@mockk }
-            every { send(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<Response>> = arg(1)
-                resultHandler.handle(Future.failedFuture(rootCause))
-                this@mockk
-            }
-            every { endHandler(any()) } answers { this@mockk }
-        }
+        val delegate = failingSendConnectionWithCause(rootCause)
 
         // then
         val connectionIssueHandler = Handler<Throwable> {
@@ -163,15 +128,7 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         // given
         val rootCause = ErrorType.create("CONNECTION_CLOSED")
 
-        val delegate = mockk<RedisConnectionImpl> {
-            every { exceptionHandler(any()) } answers { this@mockk }
-            every { batch(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<List<Response>>> = arg(1)
-                resultHandler.handle(Future.failedFuture(rootCause))
-                this@mockk
-            }
-            every { endHandler(any()) } answers { this@mockk }
-        }
+        val delegate = failingBatchConnectionWithCause(rootCause)
 
         // then
         val connectionIssueHandler = Handler<Throwable> {
@@ -196,15 +153,7 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         // given
         val rootCause = ErrorType.create("protocol-failure")
 
-        val delegate = mockk<RedisConnectionImpl> {
-            every { exceptionHandler(any()) } answers { this@mockk }
-            every { send(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<Response>> = arg(1)
-                resultHandler.handle(Future.failedFuture(rootCause))
-                this@mockk
-            }
-            every { endHandler(any()) } answers { this@mockk }
-        }
+        val delegate = failingSendConnectionWithCause(rootCause)
 
         // then NOT
         val connectionIssueHandler = Handler<Throwable> {
@@ -227,15 +176,7 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         // given
         val rootCause = ErrorType.create("protocol-failure")
 
-        val delegate = mockk<RedisConnectionImpl> {
-            every { exceptionHandler(any()) } answers { this@mockk }
-            every { batch(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<List<Response>>> = arg(1)
-                resultHandler.handle(Future.failedFuture(rootCause))
-                this@mockk
-            }
-            every { endHandler(any()) } answers { this@mockk }
-        }
+        val delegate = failingBatchConnectionWithCause(rootCause)
 
         // then NOT
         val connectionIssueHandler = Handler<Throwable> {
@@ -258,15 +199,7 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         // given
         val rootCause = ConnectException("native-exception")
 
-        val delegate = mockk<RedisConnectionImpl> {
-            every { exceptionHandler(any()) } answers { this@mockk }
-            every { send(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<Response>> = arg(1)
-                resultHandler.handle(Future.failedFuture(rootCause))
-                this@mockk
-            }
-            every { endHandler(any()) } answers { this@mockk }
-        }
+        val delegate = failingSendConnectionWithCause(rootCause)
 
         // then NOT
         val connectionIssueHandler = Handler<Throwable> {
@@ -289,15 +222,7 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         // given
         val rootCause = ConnectException("native-exception")
 
-        val delegate = mockk<RedisConnectionImpl> {
-            every { exceptionHandler(any()) } answers { this@mockk }
-            every { batch(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<List<Response>>> = arg(1)
-                resultHandler.handle(Future.failedFuture(rootCause))
-                this@mockk
-            }
-            every { endHandler(any()) } answers { this@mockk }
-        }
+        val delegate = failingBatchConnectionWithCause(rootCause)
 
         // then NOT
         val connectionIssueHandler = Handler<Throwable> {
@@ -317,17 +242,15 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
 
     @Test
     internal fun successful_send() {
-        // givem
+        // given
         val response = mockk<Response> {
             every { this@mockk.toString() } returns "well-done"
         }
 
-        val delegate = mockk<RedisConnectionImpl> {
+        val delegate = mockk<RedisConnection> {
             every { exceptionHandler(any()) } answers { this@mockk }
-            every { send(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<Response>> = arg(1)
-                resultHandler.handle(Future.succeededFuture(response))
-                this@mockk
+            every { send(any()) } answers {
+                Future.succeededFuture(response)
             }
             every { endHandler(any()) } answers { this@mockk }
         }
@@ -355,12 +278,10 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
             every { this@mockk.toString() } returns "well-done"
         }
 
-        val delegate = mockk<RedisConnectionImpl> {
+        val delegate = mockk<RedisConnection> {
             every { exceptionHandler(any()) } answers { this@mockk }
-            every { batch(any(), any()) } answers {
-                val resultHandler: Handler<AsyncResult<List<Response>>> = arg(1)
-                resultHandler.handle(Future.succeededFuture(listOf(response)))
-                this@mockk
+            every { batch(any()) } answers {
+                Future.succeededFuture(listOf(response))
             }
             every { endHandler(any()) } answers { this@mockk }
         }
@@ -381,6 +302,21 @@ internal class RedisHeimdallConnectionTest : AbstractVertxTest() {
         sut.batch(listOf(Request.cmd(Command.COMMAND)), sendResultHandler)
     }
 
+    private fun failingSendConnectionWithCause(rootCause: Throwable) = mockk<RedisConnection> {
+        every { exceptionHandler(any()) } answers { this@mockk }
+        every { send(any()) } answers {
+            Future.failedFuture(rootCause)
+        }
+        every { endHandler(any()) } answers { this@mockk }
+    }
+
+    private fun failingBatchConnectionWithCause(rootCause: Throwable) = mockk<RedisConnection> {
+        every { exceptionHandler(any()) } answers { this@mockk }
+        every { batch(any()) } answers {
+            Future.failedFuture(rootCause)
+        }
+        every { endHandler(any()) } answers { this@mockk }
+    }
 
     private fun verifyHeimdallException(
         heimdallException: RedisHeimdallException,

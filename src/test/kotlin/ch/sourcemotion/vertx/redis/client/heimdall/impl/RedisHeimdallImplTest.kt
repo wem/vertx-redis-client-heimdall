@@ -19,8 +19,8 @@ import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.redis.client.batchAwait
-import io.vertx.kotlin.redis.client.sendAwait
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.Redis
 import io.vertx.redis.client.RedisConnection
@@ -28,7 +28,6 @@ import io.vertx.redis.client.Request
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 
@@ -275,7 +274,8 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         }
     }
 
-    @RepeatedTest(10)
+    @Test
+//    @RepeatedTest(10)
     internal fun close_connection_while_send_commands_in_flight(testContext: VertxTestContext) {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
         val redisOptions = redisHeimdallOptions.redisOptions
@@ -305,7 +305,8 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         }
     }
 
-    @RepeatedTest(10)
+    @Test
+//    @RepeatedTest(10)
     internal fun close_connection_while_batches_in_flight(testContext: VertxTestContext) {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
         val commandCount = redisHeimdallOptions.redisOptions.maxPoolSize
@@ -341,6 +342,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         testContext.async(1) { checkpoint ->
 
             val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
+
             eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
                 checkpoint.flag()
             }
@@ -348,10 +350,8 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
             val expectedRootCause = Exception("Test cause")
 
             val failingDelegate = mockk<Redis> {
-                every { connect(any()) } answers {
-                    val handler = arg<Handler<AsyncResult<RedisConnection>>>(0)
-                    handler.handle(Future.failedFuture(expectedRootCause))
-                    this@mockk
+                every { connect() } answers {
+                    Future.failedFuture(expectedRootCause)
                 }
             }
 
@@ -379,7 +379,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
             val sut = RedisHeimdallImpl(
                 vertx,
                 redisHeimdallOptions,
-                listOf(PostReconnectJob { _, handler -> handler.handle(Future.failedFuture(Exception("Test exception"))) })
+                listOf(PostReconnectJob { Future.failedFuture(Exception("Test exception")) })
             )
 
             sut.verifyConnectivityWithPingPongBySend()
@@ -401,7 +401,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
         availableResponses.forEach { it.shouldBePongResponse() }
     }
 
-    private suspend fun Redis.sendPing() = sendAwait(Request.cmd(Command.PING))
+    private suspend fun Redis.sendPing() = send(Request.cmd(Command.PING)).await()
 
     private suspend fun Redis.sendPingBatch(pingCount: Int = 2) =
         batchAwait(Array(pingCount) { Request.cmd(Command.PING) }.toList())

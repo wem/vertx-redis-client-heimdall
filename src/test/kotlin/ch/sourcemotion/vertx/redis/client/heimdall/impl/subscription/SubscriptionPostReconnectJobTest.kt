@@ -2,15 +2,14 @@ package ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription
 
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.connection.RedisHeimdallSubscriptionConnection
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractVertxTest
+import ch.sourcemotion.vertx.redis.client.heimdall.testing.assertSuccess
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import io.vertx.core.AsyncResult
 import io.vertx.core.Future
-import io.vertx.core.Handler
 import io.vertx.junit5.VertxTestContext
 import io.vertx.redis.client.Redis
 import io.vertx.redis.client.RedisConnection
@@ -22,16 +21,13 @@ internal class SubscriptionPostReconnectJobTest : AbstractVertxTest() {
 
     @Test
     internal fun subscription_after_reconnect_successful(testContext: VertxTestContext) =
-        testContext.async(1) { checkpoint ->
+        testContext.async {
             // given
             val heimdallConnection = createHeimdallConnection()
             val redis = createSuccessfulConnectRedis(heimdallConnection)
 
             // when & then
-            sut.execute(redis) {
-                testContext.verify { it.succeeded().shouldBeTrue() }
-                checkpoint.flag()
-            }
+            testContext.assertSuccess(sut.execute(redis))
         }
 
     @Test
@@ -42,7 +38,7 @@ internal class SubscriptionPostReconnectJobTest : AbstractVertxTest() {
         val redis = createSuccessfulConnectRedis(heimdallConnection)
 
         // when & then
-        sut.execute(redis) {
+        sut.execute(redis).onComplete {
             testContext.verify {
                 it.succeeded().shouldBeFalse()
                 val subscriptionFailCause = it.cause().shouldBeInstanceOf<java.lang.Exception>()
@@ -59,7 +55,7 @@ internal class SubscriptionPostReconnectJobTest : AbstractVertxTest() {
         val redis = createFailingConnectRedis(rootCause)
 
         // when & then
-        sut.execute(redis) {
+        sut.execute(redis).onComplete {
             testContext.verify {
                 it.succeeded().shouldBeFalse()
                 val heimdallException = it.cause().shouldBeInstanceOf<java.lang.Exception>()
@@ -76,7 +72,7 @@ internal class SubscriptionPostReconnectJobTest : AbstractVertxTest() {
             val redis = createSuccessfulConnectRedis(createNonHeimdallConnection())
 
             // when & then
-            sut.execute(redis) {
+            sut.execute(redis).onComplete {
                 testContext.verify { it.succeeded().shouldBeTrue() }
                 checkpoint.flag()
             }
@@ -86,27 +82,24 @@ internal class SubscriptionPostReconnectJobTest : AbstractVertxTest() {
 
     private fun createHeimdallConnection(reconnectFailureCase: Throwable? = null) =
         mockk<RedisHeimdallSubscriptionConnection> {
-            every { subscribeAfterReconnect(any()) } answers {
-                val handler = arg<Handler<AsyncResult<Unit>>>(0)
+            every { subscribeAfterReconnect() } answers {
                 if (reconnectFailureCase != null) {
-                    handler.handle(Future.failedFuture(reconnectFailureCase))
+                    Future.failedFuture(reconnectFailureCase)
                 } else {
-                    handler.handle(Future.succeededFuture(Unit))
+                    Future.succeededFuture(Unit)
                 }
             }
         }
 
     private fun createSuccessfulConnectRedis(connection: RedisConnection) = mockk<Redis> {
-        every { connect(any()) } answers {
-            val handler = arg<Handler<AsyncResult<RedisConnection>>>(0)
-            this@mockk.also { handler.handle(Future.succeededFuture(connection)) }
+        every { connect() } answers {
+            Future.succeededFuture(connection)
         }
     }
 
     private fun createFailingConnectRedis(cause: Throwable) = mockk<Redis> {
-        every { connect(any()) } answers {
-            val handler = arg<Handler<AsyncResult<RedisConnection>>>(0)
-            this@mockk.also { handler.handle(Future.failedFuture(cause)) }
+        every { connect() } answers {
+            Future.failedFuture(cause)
         }
     }
 }

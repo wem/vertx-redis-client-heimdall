@@ -6,6 +6,7 @@ import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.ClientInsta
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.SubscriptionStore
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.SubscriptionStore.Companion.createSubscriptionStore
 import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractVertxTest
+import ch.sourcemotion.vertx.redis.client.heimdall.testing.assertSuccess
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.shouldBe
@@ -71,7 +72,7 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
                 Request.cmd(Command.SUBSCRIBE), Request.cmd(Command.PSUBSCRIBE),
                 Request.cmd(Command.UNSUBSCRIBE), Request.cmd(Command.PSUBSCRIBE)
             )
-        ) {
+        ).onComplete {
             it.succeeded().shouldBeTrue()
         }
     }
@@ -88,9 +89,7 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
             )
 
             // when & then
-            sut.subscribeAfterReconnect {
-                it.succeeded().shouldBeTrue()
-            }
+            testContext.assertSuccess(sut.subscribeAfterReconnect())
         }
 
     @Test
@@ -107,9 +106,7 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
             )
 
             // when & then
-            sut.subscribeAfterReconnect {
-                it.succeeded().shouldBeTrue()
-            }
+            testContext.assertSuccess(sut.subscribeAfterReconnect())
         }
 
     @Test
@@ -131,9 +128,7 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
             )
 
             // when & then
-            sut.subscribeAfterReconnect {
-                verifyFailedAndExpectedReason(it, Reason.UNSPECIFIED)
-            }
+            testContext.verifyFailingWithExpectedReason(sut.subscribeAfterReconnect(), Reason.UNSPECIFIED)
         }
 
     @Test
@@ -155,9 +150,7 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
             )
 
             // when & then
-            sut.subscribeAfterReconnect {
-                verifyFailedAndExpectedReason(it, Reason.CONNECTION_ISSUE)
-            }
+            testContext.verifyFailingWithExpectedReason(sut.subscribeAfterReconnect(), Reason.CONNECTION_ISSUE)
         }
 
     @Test
@@ -179,11 +172,13 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
             )
 
             // when & then
-            sut.subscribeAfterReconnect {
-                it.failed().shouldBeTrue()
-                val cause = it.cause()
-                cause.shouldBeInstanceOf<ErrorType>()
-                cause.message.shouldBe(rootCause.message)
+            sut.subscribeAfterReconnect().onComplete {
+                testContext.verify {
+                    it.failed().shouldBeTrue()
+                    val cause = it.cause()
+                    cause.shouldBeInstanceOf<ErrorType>()
+                    cause.message.shouldBe(rootCause.message)
+                }
             }
         }
 
@@ -206,9 +201,7 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
             )
 
             // when & then
-            sut.subscribeAfterReconnect {
-                verifyFailedAndExpectedReason(it, Reason.CONNECTION_ISSUE)
-            }
+            testContext.verifyFailingWithExpectedReason(sut.subscribeAfterReconnect(), Reason.CONNECTION_ISSUE)
         }
 
     @Test
@@ -230,16 +223,16 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
             )
 
             // when & then
-            sut.subscribeAfterReconnect {
-                verifyFailedAndExpectedReason(it, Reason.INTERNAL)
-            }
+            testContext.verifyFailingWithExpectedReason(sut.subscribeAfterReconnect(), Reason.INTERNAL)
         }
 
-    private fun verifyFailedAndExpectedReason(it: AsyncResult<Unit>, reason: Reason) {
-        it.failed().shouldBeTrue()
-        val cause = it.cause()
-        cause.shouldBeInstanceOf<RedisHeimdallException>()
-        cause.reason.shouldBe(reason)
+    private fun VertxTestContext.verifyFailingWithExpectedReason(future: Future<*>, reason: Reason) {
+        future.onSuccess { failNow(Exception("Failure of reason $reason expected")) }
+        future.onFailure {
+            verify {
+                it.shouldBeInstanceOf<RedisHeimdallException>().reason.shouldBe(reason)
+            }
+        }
     }
 
     private fun createSubscriptionConnection(
@@ -258,32 +251,27 @@ internal class RedisHeimdallSubscriptionConnectionTest : AbstractVertxTest() {
         ).initConnection() as RedisHeimdallSubscriptionConnection
     }
 
-    private fun createRedisConnectionMock(sendBatchCause: Throwable? = null, block: (RedisConnection.() -> Unit)? = null) =
+    private fun createRedisConnectionMock(
+        sendBatchCause: Throwable? = null,
+        block: (RedisConnection.() -> Unit)? = null
+    ) =
         mockk<RedisConnection> {
             every { endHandler(any()) } returns this@mockk
             every { handler(any()) } returns this@mockk
             every { exceptionHandler(any()) } returns this@mockk
             if (sendBatchCause != null) {
-                every { send(any(), any()) } answers {
-                    val handler: Handler<AsyncResult<Any>> = arg(1)
-                    handler.handle(Future.failedFuture(sendBatchCause))
-                    this@mockk
+                every { send(any()) } answers {
+                    Future.failedFuture(sendBatchCause)
                 }
-                every { batch(any(), any()) } answers {
-                    val handler: Handler<AsyncResult<Any>> = arg(1)
-                    handler.handle(Future.failedFuture(sendBatchCause))
-                    this@mockk
+                every { batch(any()) } answers {
+                    Future.failedFuture(sendBatchCause)
                 }
             } else {
-                every { send(any(), any()) } answers {
-                    val handler: Handler<AsyncResult<Any>> = arg(1)
-                    handler.handle(Future.succeededFuture())
-                    this@mockk
+                every { send(any()) } answers {
+                    Future.succeededFuture()
                 }
-                every { batch(any(), any()) } answers {
-                    val handler: Handler<AsyncResult<Any>> = arg(1)
-                    handler.handle(Future.succeededFuture())
-                    this@mockk
+                every { batch(any()) } answers {
+                    Future.succeededFuture()
                 }
             }
             block?.invoke(this)

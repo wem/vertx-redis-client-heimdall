@@ -20,13 +20,14 @@ import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.redis.client.sendAwait
+import io.vertx.kotlin.coroutines.await
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 
@@ -49,12 +50,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
         val subscriptionClientOptions = getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL)
 
         // then
-        RedisHeimdallSubscription.createAwait(vertx, subscriptionClientOptions) { msg ->
+        RedisHeimdallSubscription.create(vertx, subscriptionClientOptions) { msg ->
             testContext.verify {
                 verifyCommonTestChannel(msg)
             }
             checkpoint.flag()
-        }.markAsTestClient()
+        }.await().markAsTestClient()
 
         // when
         pubClient.publishAndVerifyResponse(TEST_CHANNEL, TEST_CHANNEL_MSG)
@@ -69,12 +70,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
         )
 
         // then
-        RedisHeimdallSubscription.createAwait(vertx, subscriptionClientOptions) { msg ->
+        RedisHeimdallSubscription.create(vertx, subscriptionClientOptions) { msg ->
             testContext.verify {
                 verifyCommonTestChannel(msg)
             }
             checkpoint.flag()
-        }.markAsTestClient()
+        }.await().markAsTestClient()
 
         // when
         pubClient.publishAndVerifyResponse(TEST_CHANNEL, TEST_CHANNEL_MSG)
@@ -89,12 +90,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
                 .addChannelPatterns(ANOTHER_TEST_CHANNEL_PATTERN)
 
             // then
-            RedisHeimdallSubscription.createAwait(vertx, subscriptionClientOptions) { msg ->
+            RedisHeimdallSubscription.create(vertx, subscriptionClientOptions) { msg ->
                 testContext.verify {
                     verifyMessagesOnBothChannels(msg)
                     checkpoint.flag()
                 }
-            }.markAsTestClient()
+            }.await().markAsTestClient()
 
             // when
             pubClient.publishAndVerifyResponse(TEST_CHANNEL, TEST_CHANNEL_MSG)
@@ -108,12 +109,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
         val subscriptionClientOptions = getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL)
 
         // then
-        RedisHeimdallSubscription.createAwait(vertx, subscriptionClientOptions) { msg ->
+        RedisHeimdallSubscription.create(vertx, subscriptionClientOptions) { msg ->
             testContext.verify {
                 verifyCommonTestChannel(msg)
             }
             checkpoint.flag()
-        }.markAsTestClient()
+        }.await().markAsTestClient()
 
         eventBus.consumer<Any>(redisHeimdallOptions.reconnectingSucceededNotificationAddress) {
             // when
@@ -135,12 +136,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
                 getDefaultRedisHeimdallSubscriptionOptions().addChannelPatterns(TEST_CHANNEL_PATTERN)
 
             // then
-            RedisHeimdallSubscription.createAwait(vertx, subscriptionClientOptions) { msg ->
+            RedisHeimdallSubscription.create(vertx, subscriptionClientOptions) { msg ->
                 testContext.verify {
                     verifyCommonTestChannel(msg)
                 }
                 checkpoint.flag()
-            }.markAsTestClient()
+            }.await().markAsTestClient()
 
             eventBus.consumer<Any>(redisHeimdallOptions.reconnectingSucceededNotificationAddress) {
                 // when
@@ -162,12 +163,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
                 .addChannelNames(TEST_CHANNEL).addChannelPatterns(ANOTHER_TEST_CHANNEL_PATTERN)
 
             // then
-            RedisHeimdallSubscription.createAwait(vertx, subscriptionClientOptions) { msg ->
+            RedisHeimdallSubscription.create(vertx, subscriptionClientOptions) { msg ->
                 testContext.verify {
                     verifyMessagesOnBothChannels(msg)
                     checkpoint.flag()
                 }
-            }.markAsTestClient()
+            }.await().markAsTestClient()
 
             eventBus.consumer<Any>(redisHeimdallOptions.reconnectingSucceededNotificationAddress) {
                 // when
@@ -187,12 +188,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
         val redisHeimdallOptions = getDefaultRedisHeimdallSubscriptionOptions()
 
         // then
-        val sut = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallOptions) { msg ->
+        val sut = RedisHeimdallSubscription.create(vertx, redisHeimdallOptions) { msg ->
             testContext.verify {
                 verifyCommonTestChannel(msg)
             }
             checkpoint.flag()
-        }.markAsTestClient()
+        }.await().markAsTestClient()
 
         // when
         sut.addChannelsAwait(TEST_CHANNEL)
@@ -206,12 +207,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
         val redisHeimdallOptions = getDefaultRedisHeimdallSubscriptionOptions()
 
         // then
-        val sut = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallOptions) { msg ->
+        val sut = RedisHeimdallSubscription.create(vertx, redisHeimdallOptions) { msg ->
             testContext.verify {
                 verifyCommonTestChannel(msg)
             }
             checkpoint.flag()
-        }.markAsTestClient()
+        }.await().markAsTestClient()
 
         // when
         sut.addChannelPatternsAwait(TEST_CHANNEL_PATTERN)
@@ -226,12 +227,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
             val redisHeimdallOptions = getDefaultRedisHeimdallSubscriptionOptions()
 
             // then
-            val sut = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallOptions) { msg ->
+            val sut = RedisHeimdallSubscription.create(vertx, redisHeimdallOptions) { msg ->
                 testContext.verify {
                     verifyMessagesOnBothChannels(msg)
                 }
                 checkpoint.flag()
-            }.markAsTestClient()
+            }.await().markAsTestClient()
 
             // when
             sut.addChannelsAwait(TEST_CHANNEL)
@@ -248,13 +249,13 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
         val redisHeimdallOptions = getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(channelNames)
 
         // then
-        val sut = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallOptions) { msg ->
+        val sut = RedisHeimdallSubscription.create(vertx, redisHeimdallOptions) { msg ->
             testContext.verify {
                 channelNames.shouldContain(msg.channel)
                 verifyMessagesOnBothChannels(msg)
             }
             checkpoint.flag()
-        }.markAsTestClient()
+        }.await().markAsTestClient()
 
         // when
         val pubClient = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
@@ -279,12 +280,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
             )
 
         // then
-        val sut = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallOptions) { msg ->
+        val sut = RedisHeimdallSubscription.create(vertx, redisHeimdallOptions) { msg ->
             testContext.verify {
                 verifyMessagesOnBothChannels(msg)
             }
             checkpoint.flag()
-        }.markAsTestClient()
+        }.await().markAsTestClient()
 
         // when
         val pubClient = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
@@ -309,12 +310,12 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
                     .addChannelPatterns(ANOTHER_TEST_CHANNEL_PATTERN)
 
             // then
-            val sut = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallOptions) { msg ->
+            val sut = RedisHeimdallSubscription.create(vertx, redisHeimdallOptions) { msg ->
                 testContext.verify {
                     verifyMessagesOnBothChannels(msg)
                 }
                 checkpoint.flag()
-            }.markAsTestClient()
+            }.await().markAsTestClient()
 
             // when
             val pubClient = RedisHeimdall.create(vertx, redisHeimdallOptions).markAsTestClient()
@@ -334,7 +335,7 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
     internal fun start_without_subscriptions_success_even_on_connection_issue(testContext: VertxTestContext) =
         testContext.async {
             closeConnection()
-            RedisHeimdallSubscription.createAwait(vertx, getDefaultRedisHeimdallSubscriptionOptions()) {}
+            RedisHeimdallSubscription.create(vertx, getDefaultRedisHeimdallSubscriptionOptions()){}.await()
         }
 
     @Test
@@ -343,22 +344,23 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
 
             val expectedCause = Exception("connect issue")
 
-            val subscriptionClient = RedisHeimdallSubscriptionImpl(vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
-                ANOTHER_TEST_CHANNEL_PATTERN)) {}
+            val subscriptionClient = RedisHeimdallSubscriptionImpl(
+                vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
+                    ANOTHER_TEST_CHANNEL_PATTERN
+                )
+            ) {}
             val sut = spyk(subscriptionClient) {
-                every { connect(any()) } answers {
-                    val handler = this.arg<Handler<AsyncResult<RedisConnection>>>(0)
-                    handler.handle(Future.failedFuture(expectedCause))
-                    this@spyk
+                every { connect() } answers {
+                    Future.failedFuture(expectedCause)
                 }
             }
 
-            sut.start(testContext.failing {
+            testContext.assertFailure(sut.start()).onFailure {
                 val exception = it.shouldBeInstanceOf<RedisHeimdallException>()
                 exception.reason.shouldBe(Reason.UNABLE_TO_START)
                 exception.cause.shouldBe(expectedCause)
                 checkpoint.flag()
-            })
+            }
         }
 
     @Test
@@ -367,32 +369,33 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
 
             val expectedCause = Exception("connect issue")
 
-            val subscriptionConnection = spyk(RedisHeimdallSubscriptionConnection(mockk(), {}, vertx.createSubscriptionStore(
-                ClientInstanceId("ed852aae-314f-4791-80db-fe079d437c82")
-            )){}) {
-                every { send(any(), any()) } answers  {
-                    val handler = this.arg<Handler<AsyncResult<RedisConnection>>>(1)
-                    handler.handle(Future.failedFuture(expectedCause))
-                    this@spyk
+            val subscriptionConnection = spyk(RedisHeimdallSubscriptionConnection(
+                mockk(), {}, vertx.createSubscriptionStore(
+                    ClientInstanceId("ed852aae-314f-4791-80db-fe079d437c82")
+                )
+            ) {}) {
+                every { send(any()) } answers {
+                    Future.failedFuture(expectedCause)
                 }
             }
 
-            val subscriptionClient = RedisHeimdallSubscriptionImpl(vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
-                ANOTHER_TEST_CHANNEL_PATTERN)) {}
+            val subscriptionClient = RedisHeimdallSubscriptionImpl(
+                vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
+                    ANOTHER_TEST_CHANNEL_PATTERN
+                )
+            ) {}
             val sut = spyk(subscriptionClient) {
-                every { connect(any()) } answers {
-                    val handler = this.arg<Handler<AsyncResult<RedisConnection>>>(0)
-                    handler.handle(Future.succeededFuture(subscriptionConnection))
-                    this@spyk
+                every { connect() } answers {
+                    Future.succeededFuture(subscriptionConnection)
                 }
             }
 
-            sut.start(testContext.failing {
+            testContext.assertFailure(sut.start()).onFailure {
                 val exception = it.shouldBeInstanceOf<RedisHeimdallException>()
                 exception.reason.shouldBe(Reason.UNABLE_TO_START)
                 exception.cause.shouldBe(expectedCause)
                 checkpoint.flag()
-            })
+            }
         }
 
     @Test
@@ -402,60 +405,63 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
             val expectedCause = Exception("connect issue")
             val response = mockk<Response>()
 
-            val subscriptionConnection = spyk(RedisHeimdallSubscriptionConnection(mockk(), {}, vertx.createSubscriptionStore(
-                ClientInstanceId("ed852aae-314f-4791-80db-fe079d437c82")
-            )){}) {
-                every { send(any(), any()) } answers  {
+            val subscriptionConnection = spyk(RedisHeimdallSubscriptionConnection(
+                mockk(), {}, vertx.createSubscriptionStore(
+                    ClientInstanceId("ed852aae-314f-4791-80db-fe079d437c82")
+                )
+            ) {}) {
+                every { send(any()) } answers {
                     val request = this.arg<Request>(0)
-                    val handler = this.arg<Handler<AsyncResult<Response>>>(1)
                     if (request.command() == Command.SUBSCRIBE) {
-                        handler.handle(Future.succeededFuture(response))
+                        Future.succeededFuture(response)
                     } else {
-                        handler.handle(Future.failedFuture(expectedCause))
+                        Future.failedFuture(expectedCause)
                     }
-                    this@spyk
                 }
             }
 
-            val subscriptionClient = RedisHeimdallSubscriptionImpl(vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
-                ANOTHER_TEST_CHANNEL_PATTERN)) {}
+            val subscriptionClient = RedisHeimdallSubscriptionImpl(
+                vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
+                    ANOTHER_TEST_CHANNEL_PATTERN
+                )
+            ) {}
             val sut = spyk(subscriptionClient) {
-                every { connect(any()) } answers {
-                    val handler = this.arg<Handler<AsyncResult<RedisConnection>>>(0)
-                    handler.handle(Future.succeededFuture(subscriptionConnection))
-                    this@spyk
+                every { connect() } answers {
+                    Future.succeededFuture(subscriptionConnection)
                 }
             }
 
-            sut.start(testContext.failing {
+            testContext.assertFailure(sut.start()).onFailure {
                 val exception = it.shouldBeInstanceOf<RedisHeimdallException>()
                 exception.reason.shouldBe(Reason.UNABLE_TO_START)
                 exception.cause.shouldBe(expectedCause)
                 checkpoint.flag()
-            })
+            }
         }
 
     @Test
     internal fun start_with_fail_on_wrong_connection_type(testContext: VertxTestContext) =
-        testContext.async {
+        testContext.async(1) { checkpoint ->
 
             val wrongConnection = mockk<RedisConnection> {}
 
-            val sut = RedisHeimdallSubscriptionImpl(vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
-                ANOTHER_TEST_CHANNEL_PATTERN)) {}
-            spyk(sut) {
-                every { connect(any()) } answers {
-                    val handler = this.arg<Handler<AsyncResult<RedisConnection>>>(0)
-                    handler.handle(Future.succeededFuture(wrongConnection))
-                    this@spyk
+            val subscriptionClient = RedisHeimdallSubscriptionImpl(
+                vertx, getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL).addChannelPatterns(
+                    ANOTHER_TEST_CHANNEL_PATTERN
+                )
+            ) {}
+            val sut = spyk(subscriptionClient) {
+                every { connect() } answers {
+                    Future.succeededFuture(wrongConnection)
                 }
             }
 
-            sut.start(testContext.failing {
+            testContext.assertFailure(sut.start()).onFailure {
                 val exception = it.shouldBeInstanceOf<RedisHeimdallException>()
                 exception.reason.shouldBe(Reason.UNABLE_TO_START)
                 exception.cause.shouldBeNull()
-            })
+                checkpoint.flag()
+            }
         }
 
     @Test
@@ -464,7 +470,7 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
             // given
             // We starts the subscription client with a channel, so the connection will get established
             val redisHeimdallOptions = getDefaultRedisHeimdallSubscriptionOptions().addChannelNames(TEST_CHANNEL)
-            val sut = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallOptions) {}.markAsTestClient()
+            val sut = RedisHeimdallSubscription.create(vertx, redisHeimdallOptions) {}.await().markAsTestClient()
 
             // then NOT
             eventBus.consumer<String>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
@@ -510,5 +516,5 @@ internal class RedisHeimdallSubscriptionImplTest : AbstractRedisTest() {
     private suspend fun RedisHeimdall.publishMessage(
         channelName: String,
         message: String
-    ) = sendAwait(Request.cmd(Command.PUBLISH).arg(channelName).arg(message))
+    ) = send(Request.cmd(Command.PUBLISH).arg(channelName).arg(message)).await()
 }

@@ -3,7 +3,7 @@ package ch.sourcemotion.vertx.redis.client.heimdall.subscription
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions
 import io.vertx.redis.client.RedisOptions
 
-open class RedisHeimdallSubscriptionOptions() : RedisHeimdallOptions() {
+class RedisHeimdallSubscriptionOptions() : RedisHeimdallOptions() {
 
     /**
      * Channel names they will get subscribed at client instantiation.

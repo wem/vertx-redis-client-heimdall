@@ -6,7 +6,10 @@ import ch.sourcemotion.vertx.redis.client.heimdall.impl.connection.RedisHeimdall
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.SubscriptionStore
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.verifySubscriptionCommandOnly
 import ch.sourcemotion.vertx.redis.client.heimdall.impl.subscription.verifySubscriptionCommandsOnly
-import io.vertx.core.*
+import io.vertx.core.CompositeFuture
+import io.vertx.core.Future
+import io.vertx.core.Handler
+import io.vertx.core.Promise
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.RedisConnection
@@ -30,7 +33,7 @@ internal class RedisHeimdallSubscriptionConnection(
 
     override fun initConnection(): RedisHeimdallConnection {
         super.initConnection()
-        // Call super is mandatory here, as this implementation prevents setting the handler by interface.
+        // Call super instead of this reference is mandatory here, as this implementation prevents setting the handler by interface.
         super.handler(this::handleSubscriptionMessage)
         return this
     }
@@ -43,71 +46,65 @@ internal class RedisHeimdallSubscriptionConnection(
         )
     }
 
-    override fun send(command: Request, onSend: Handler<AsyncResult<Response>>): RedisConnection {
-        if (verifySubscriptionCommandOnly(command.command(), onSend)) {
-            super.send(command, onSend)
-        }
-        return this
+    override fun send(command: Request): Future<Response> {
+        val promise = Promise.promise<Response>()
+        return if (verifySubscriptionCommandOnly(command.command(), promise)) {
+            super.send(command)
+        } else promise.future() // Future already completed here verifySubscriptionCommandsOnly will complete it
     }
 
-    override fun batch(commands: List<Request>, onSend: Handler<AsyncResult<List<Response>>>): RedisConnection {
-        if (verifySubscriptionCommandsOnly(commands.map { it.command() }, onSend)) {
-            super.batch(commands, onSend)
-        }
-        return this
+    override fun batch(commands: List<Request>): Future<List<Response>> {
+        val promise = Promise.promise<List<Response>>()
+        return if (verifySubscriptionCommandsOnly(commands.map { it.command() }, promise)) {
+            super.batch(commands)
+        } else promise.future() // Future already completed here verifySubscriptionCommandsOnly will complete it
     }
 
     fun subscribeToChannelsAndPatterns(
         channelNames: List<String>,
         channelPatterns: List<String>,
-        handler: Handler<AsyncResult<Unit>>
-    ) {
-        val commandFutures = ArrayList<Future<Unit>>()
+    ): Future<Unit> {
+        val promise = Promise.promise<Unit>()
+        val commandFutures = ArrayList<Future<*>>()
         if (channelNames.isNotEmpty()) {
-            val promise = Promise.promise<Unit>()
-            commandFutures.add(promise.future())
             val cmd = Request.cmd(Command.SUBSCRIBE)
             channelNames.addToCommandArgs(cmd)
-            send(cmd) {
-                if (it.succeeded()) {
+            val future = send(cmd)
+                .onSuccess {
                     logger.info("Channel(s) $channelNames subscribed")
-                    promise.complete()
-                } else {
-                    logger.warn("Subscription to channel(s) $channelNames failed")
-                    promise.fail(it.cause())
                 }
-            }
+                .onFailure {
+                    logger.warn("Subscription to channel(s) $channelNames failed", it)
+                }
+            commandFutures.add(future)
         }
         if (channelPatterns.isNotEmpty()) {
-            val promise = Promise.promise<Unit>()
-            commandFutures.add(promise.future())
             val cmd = Request.cmd(Command.PSUBSCRIBE)
             channelPatterns.addToCommandArgs(cmd)
-            send(cmd) {
-                if (it.succeeded()) {
+            val future = send(cmd)
+                .onSuccess {
                     logger.info("Channel pattern(s) $channelPatterns subscribed")
-                    promise.complete()
-                } else {
-                    logger.warn("Subscription to channel pattern(s) $channelPatterns failed")
-                    promise.fail(it.cause())
+                }.onFailure {
+                    logger.warn("Subscription to channel pattern(s) $channelPatterns failed", it)
                 }
-            }
+            commandFutures.add(future)
         }
         if (commandFutures.isNotEmpty()) {
             CompositeFuture.all(commandFutures.toList()).onSuccess {
-                handler.handle(Future.succeededFuture(Unit))
+                promise.complete()
             }.onFailure {
-                handler.handle(Future.failedFuture(it))
+                promise.fail(it)
             }
         } else {
-            handler.handle(Future.succeededFuture(Unit))
+            promise.complete()
         }
+        return promise.future()
     }
 
-    fun subscribeAfterReconnect(handler: Handler<AsyncResult<Unit>>) {
+    fun subscribeAfterReconnect(): Future<Unit> {
         val channelNames = subscriptionStore.subscriptions()?.toList() ?: emptyList()
         val patterns = subscriptionStore.patterns()?.toList() ?: emptyList()
-        subscribeToChannelsAndPatterns(channelNames, patterns, handler)
+        return subscribeToChannelsAndPatterns(channelNames, patterns)
     }
 
     private fun handleSubscriptionMessage(response: Response) {

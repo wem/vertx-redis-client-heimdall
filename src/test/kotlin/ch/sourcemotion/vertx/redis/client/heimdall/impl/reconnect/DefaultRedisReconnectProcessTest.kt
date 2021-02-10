@@ -18,7 +18,7 @@ internal class DefaultRedisReconnectProcessTest : AbstractRedisTest() {
         val sut = DefaultRedisReconnectProcess(vertx, getDefaultRedisHeimdallOptions())
 
         // when & then
-        sut.startReconnectProcess(Exception("Test exception")) {
+        sut.startReconnectProcess(Exception("Test exception")).onComplete {
             testContext.verify {
                 it.succeeded().shouldBeTrue()
                 it.result().shouldNotBeNull()
@@ -40,7 +40,7 @@ internal class DefaultRedisReconnectProcessTest : AbstractRedisTest() {
         downStreamTimeout()
 
         // then
-        sut.startReconnectProcess(Exception("Test exception")) {
+        sut.startReconnectProcess(Exception("Test exception")).onComplete {
             testContext.verify {
                 it.failed().shouldBeTrue()
                 it.result().shouldBeNull()
@@ -62,7 +62,7 @@ internal class DefaultRedisReconnectProcessTest : AbstractRedisTest() {
         downStreamTimeout()
 
         // then
-        sut.startReconnectProcess(Exception("Test exception")) {
+        sut.startReconnectProcess(Exception("Test exception")).onComplete {
             testContext.verify {
                 it.succeeded().shouldBeTrue()
                 it.result().shouldNotBeNull()

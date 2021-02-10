@@ -9,6 +9,7 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.Request
 import org.junit.jupiter.api.Test
@@ -20,7 +21,7 @@ internal class CloseTest : AbstractRedisTest() {
     @Timeout(5, timeUnit = TimeUnit.SECONDS)
     @Test
     internal fun common_client_not_hangs_on_close(testContext: VertxTestContext) = testContext.async {
-        vertx.deployVerticleAwait({
+        vertx.deployVerticle({
             object : CoroutineVerticle() {
                 private val client by lazy(NONE) { RedisHeimdall.create(vertx, getDefaultRedisHeimdallOptions()) }
                 override suspend fun start() {
@@ -31,21 +32,21 @@ internal class CloseTest : AbstractRedisTest() {
                     })
                 }
             }
-        }, deploymentOptionsOf())
+        }, deploymentOptionsOf()).await()
     }
 
     @Timeout(5, timeUnit = TimeUnit.SECONDS)
     @Test
     internal fun subscription_client_not_hangs_on_close(testContext: VertxTestContext) = testContext.async {
-        vertx.deployVerticleAwait({
+        vertx.deployVerticle({
             object : CoroutineVerticle() {
                 private lateinit var client: RedisHeimdallSubscription
                 override suspend fun start() {
                     val redisHeimdallSubscriptionOptions =
                         getDefaultRedisHeimdallSubscriptionOptions().addChannelNames("test-channel")
-                    client = RedisHeimdallSubscription.createAwait(vertx, redisHeimdallSubscriptionOptions) {}
+                    client = RedisHeimdallSubscription.create(vertx, redisHeimdallSubscriptionOptions) {}.await()
                 }
             }
-        }, deploymentOptionsOf())
+        }, deploymentOptionsOf()).await()
     }
 }

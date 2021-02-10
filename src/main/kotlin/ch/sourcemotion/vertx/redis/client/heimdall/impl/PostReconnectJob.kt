@@ -1,7 +1,6 @@
 package ch.sourcemotion.vertx.redis.client.heimdall.impl
 
-import io.vertx.core.AsyncResult
-import io.vertx.core.Handler
+import io.vertx.core.Future
 import io.vertx.redis.client.Redis
 
 /**
@@ -9,5 +8,5 @@ import io.vertx.redis.client.Redis
  * to invoke the reconnect process again.
  */
 internal fun interface PostReconnectJob {
-    fun execute(redis: Redis, handler: Handler<AsyncResult<Unit>>)
+    fun execute(redis: Redis) : Future<Unit>
 }

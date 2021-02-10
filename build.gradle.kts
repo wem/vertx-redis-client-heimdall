@@ -2,38 +2,34 @@ import java.util.*
 
 plugins {
     java
-    kotlin("jvm") version "1.4.10"
-    id("io.spring.dependency-management") version "1.0.10.RELEASE"
+    kotlin("jvm") version "1.4.30"
     id("com.jfrog.bintray") version "1.8.5"
     `maven-publish`
 }
 
 (System.getProperty("release_version") ?: findProperty("release_version"))?.let { version = it.toString() }
 
-val version_vertx = "3.9.4"
-val version_coroutines = "1.3.9"
+val version_vertx = "4.0.2"
+val version_coroutines = "1.4.2"
 
 // Testing libs
-val version_junit = "5.6.1"
-val version_testcontainers = "1.15.0-rc2"
-val version_kotest = "4.3.0"
+val version_junit = "5.7.0"
+val version_testcontainers = "1.15.1"
+val version_kotest = "4.4.1"
 val version_log4j = "2.13.3"
-val version_mockk = "1.10.2"
+val version_mockk = "1.10.5"
+val jackson_version = "2.11.3"
 
 repositories {
     jcenter()
 }
 
-dependencyManagement {
-    imports {
-        mavenBom("io.vertx:vertx-dependencies:$version_vertx")
-        mavenBom("org.junit:junit-bom:$version_junit")
-        mavenBom("org.testcontainers:testcontainers-bom:$version_testcontainers")
-        mavenBom("org.apache.logging.log4j:log4j-bom:$version_log4j")
-    }
-}
-
 dependencies {
+    implementation(platform("io.vertx:vertx-dependencies:$version_vertx"))
+    implementation(platform("org.apache.logging.log4j:log4j-bom:$version_log4j"))
+    testImplementation(platform("org.junit:junit-bom:$version_junit"))
+    testImplementation(platform("org.testcontainers:testcontainers-bom:$version_testcontainers"))
+
     api(kotlin("stdlib-jdk8"))
     api(kotlin("reflect"))
     api("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$version_coroutines")
@@ -43,7 +39,7 @@ dependencies {
         exclude("org.jetbrains.kotlinx", "kotlinx-coroutines-core")
         exclude("org.jetbrains.kotlin", "*")
     }
-    api("com.fasterxml.jackson.module:jackson-module-kotlin:${dependencyManagement.importedProperties["jackson.version"]}")
+    api("com.fasterxml.jackson.module:jackson-module-kotlin:$jackson_version")
 
     testImplementation(vertx("junit5"))
     testImplementation("org.testcontainers:junit-jupiter")
