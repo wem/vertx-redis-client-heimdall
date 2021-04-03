@@ -39,3 +39,10 @@ Now the Heimdall client will keep the previous delegated client open until a "fr
 ### Fix
 #### Jackson serialization issue of Options
 - Jackson deserialization issues with Options.
+
+## [0.0.6.1]
+### Maintenance
+#### Bump versions
+- Vert.x > 3.9.6
+- Kotlin > 1.4.32
+- Kotlin coroutines > 1.4.3
