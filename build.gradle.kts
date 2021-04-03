@@ -2,7 +2,7 @@ import java.util.*
 
 plugins {
     java
-    kotlin("jvm") version "1.4.10"
+    kotlin("jvm") version "1.4.32"
     id("io.spring.dependency-management") version "1.0.10.RELEASE"
     id("com.jfrog.bintray") version "1.8.5"
     `maven-publish`
@@ -10,12 +10,12 @@ plugins {
 
 (System.getProperty("release_version") ?: findProperty("release_version"))?.let { version = it.toString() }
 
-val version_vertx = "3.9.4"
-val version_coroutines = "1.3.9"
+val version_vertx = "3.9.6"
+val version_coroutines = "1.4.3"
 
 // Testing libs
-val version_junit = "5.6.1"
-val version_testcontainers = "1.15.0-rc2"
+val version_junit = "5.7.0"
+val version_testcontainers = "1.15.2"
 val version_kotest = "4.3.0"
 val version_log4j = "2.13.3"
 val version_mockk = "1.10.2"
