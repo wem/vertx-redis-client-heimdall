@@ -12,5 +12,8 @@ interface RedisHeimdall : Redis, AutoCloseable {
     companion object {
         @JvmStatic
         fun create(vertx: Vertx, options: RedisHeimdallOptions): RedisHeimdall = RedisHeimdallImpl(vertx, options)
+
+        @JvmStatic
+        fun createLight(vertx: Vertx, options: RedisHeimdallOptions): RedisHeimdall = RedisHeimdallLight(vertx, options)
     }
 }
