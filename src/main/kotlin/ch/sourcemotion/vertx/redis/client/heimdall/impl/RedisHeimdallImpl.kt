@@ -26,7 +26,8 @@ internal open class RedisHeimdallImpl(
 
     private var delegate: Redis = Redis.createClient(vertx, options.redisOptions)
 
-    private var reconnectingInProgress = false
+    var reconnectingInProgress = false
+        private set
 
     private val reconnectingHandler: RedisReconnectProcess = configureRedisConnectionFailureHandler()
 
@@ -122,9 +123,9 @@ internal open class RedisHeimdallImpl(
 
         reconnectingHandler.startReconnectProcess(cause) { asyncReconnected ->
             if (asyncReconnected.succeeded()) {
-                // We close the previous connection after successful reconnect, because during reconnect there can be still tasks on the fly.
+                // We close the previous client only after successful reconnect, because during reconnect there can be still tasks on the fly.
                 runCatching {
-                    delegate.close()// Close previous delegate, so all resource get free
+                    delegate.close() // Close previous delegate, so all resource get freed
                 }
                 delegate = asyncReconnected.result()
                 reconnectingInProgress = false
