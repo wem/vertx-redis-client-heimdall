@@ -1,6 +1,5 @@
 package ch.sourcemotion.vertx.redis.client.heimdall.testing
 
-import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdall
 import ch.sourcemotion.vertx.redis.client.heimdall.RedisHeimdallOptions
 import ch.sourcemotion.vertx.redis.client.heimdall.subscription.RedisHeimdallSubscription
 import ch.sourcemotion.vertx.redis.client.heimdall.subscription.RedisHeimdallSubscriptionOptions
@@ -8,6 +7,7 @@ import ch.sourcemotion.vertx.redis.client.heimdall.testing.container.TestContain
 import eu.rekawek.toxiproxy.model.ToxicDirection
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.redis.client.redisOptionsOf
+import io.vertx.redis.client.Redis
 import kotlinx.coroutines.delay
 import org.junit.jupiter.api.AfterEach
 import org.testcontainers.containers.Network
@@ -36,7 +36,7 @@ internal abstract class AbstractRedisTest : AbstractVertxTest() {
 
     private val redisClientCloseTasks = ArrayList<() -> Unit>()
 
-    protected fun RedisHeimdall.markAsTestClient() = this.also { redisClientCloseTasks.add { this.close() } }
+    protected fun <R : Redis> R.markAsTestClient() = this.also { redisClientCloseTasks.add { this.close() } }
     protected fun RedisHeimdallSubscription.markAsTestClient() =
         this.also { redisClientCloseTasks.add { this.close() } }
 
