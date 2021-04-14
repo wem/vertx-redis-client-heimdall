@@ -46,3 +46,13 @@ Now the Heimdall client will keep the previous delegated client open until a "fr
 - Vert.x > 3.9.6
 - Kotlin > 1.4.32
 - Kotlin coroutines > 1.4.3
+
+## [0.0.7]
+### Feature
+#### RedisHeimdallLight
+- This library now provides a single connection client, with the same capabilities as the common client (reconnect, etc.).
+Please check the README.
+### Fixed
+#### Handle "Broken pipe" IOException as connection issue and initiate reconnect
+- Thrown java.io.IOException with message "Broken pipe" will be handled now as connection issue and therefore the client 
+  will reconnect.

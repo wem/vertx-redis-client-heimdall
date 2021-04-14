@@ -74,6 +74,23 @@ val redisHeimdall = RedisHeimdall.create(vertx, RedisHeimdallOptions())
 >
 > **So it's recommended to work on the client and not a connection directly when ever possible.**  
 
+### Light client
+
+Client that uses a single connection to Redis and bypasses any pooling etc. It also provides reconnect capabilities 
+as it uses RedisHeimdall under the hood.
+
+**Java**
+```java
+final RedisHeimdall redisHeimdallLight = RedisHeimdall.createLight(vertx, new RedisHeimdallOptions());
+```
+
+**Kotlin**
+```kotlin
+val redisHeimdallLight = RedisHeimdall.createLight(vertx, RedisHeimdallOptions())
+```
+
+> This client will probably provide the best performance unless you need connection pooling.
+
 ### Subscription client
 
 An additional feature of this client is a specialized variant for subscription purposes only.
