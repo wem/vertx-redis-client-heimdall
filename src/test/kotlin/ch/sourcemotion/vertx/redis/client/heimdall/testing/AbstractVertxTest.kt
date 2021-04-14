@@ -11,6 +11,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -36,6 +37,16 @@ internal abstract class AbstractVertxTest {
         context = vertx.orCreateContext
         testScope = CoroutineScope(context.dispatcher())
     }
+
+    /**
+     * Because @Before* and @After* can get started concurrently otherwise
+     */
+    protected fun asyncBeforeOrAfter(block: suspend CoroutineScope.() -> Unit) {
+        runBlocking(context.dispatcher()) {
+            block()
+        }
+    }
+
 
     protected fun VertxTestContext.async(block: suspend CoroutineScope.() -> Unit) {
         testScope.launch {
