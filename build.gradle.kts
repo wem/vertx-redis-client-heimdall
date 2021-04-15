@@ -3,9 +3,10 @@ import java.util.*
 plugins {
     java
     kotlin("jvm") version "1.4.32"
+    id("org.jetbrains.dokka") version "1.4.30"
     id("io.spring.dependency-management") version "1.0.10.RELEASE"
-    id("com.jfrog.bintray") version "1.8.5"
     `maven-publish`
+    signing
 }
 
 (System.getProperty("release_version") ?: findProperty("release_version"))?.let { version = it.toString() }
@@ -56,6 +57,8 @@ dependencies {
     testImplementation(vertx("lang-kotlin")) {
         exclude("org.jetbrains.kotlin", "*")
     }
+
+    dokkaHtmlPlugin("org.jetbrains.dokka:kotlin-as-java-plugin:1.4.30")
 }
 
 fun vertx(module: String): String = "io.vertx:vertx-$module"
@@ -91,55 +94,82 @@ tasks {
     }
 }
 
-val bintrayUser: String by lazy {
-    "${findProperty("bintray_user")}"
+val publishUsername: String by lazy {
+    "${findProperty("ossrhUsername")}"
 }
-val bintrayApiKey: String by lazy {
-    "${findProperty("bintray_api_key")}"
+val publishPassword: String by lazy {
+    "${findProperty("ossrhPassword")}"
 }
 
 val publicationName = "vertxRedisHeimdall"
-
-bintray {
-    user = bintrayUser
-    key = bintrayApiKey
-    setPublications(publicationName)
-
-    pkg(closureOf<com.jfrog.bintray.gradle.BintrayExtension.PackageConfig> {
-        repo = "maven"
-        name = project.name
-        userOrg = "michel-werren"
-        vcsUrl = "https://github.com/wem/vertx-redis-client-heimdall"
-        version(closureOf<com.jfrog.bintray.gradle.BintrayExtension.VersionConfig> {
-            name = project.version.toString()
-            released = Date().toString()
-        })
-        setLicenses("MIT")
-    })
-}
 
 val sourcesJar by tasks.registering(Jar::class) {
     archiveClassifier.set("sources")
     from(sourceSets.main.get().allSource)
 }
 
+val javadocJar by tasks.registering(Jar::class) {
+    dependsOn.add(tasks.dokkaJavadoc)
+    archiveClassifier.set("javadoc")
+    from("$buildDir/dokka/javadoc")
+}
+
+val publishUrl = if ("$version".endsWith("SNAPSHOT")) {
+    "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+} else {
+    "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+}
+
 publishing {
     publications {
-        register(publicationName, MavenPublication::class.java) {
+        repositories {
+            maven {
+                name = "ossrh"
+                setUrl(publishUrl)
+                credentials {
+                    username = publishUsername
+                    password = publishPassword
+                }
+            }
+        }
+
+        create(publicationName, MavenPublication::class.java) {
             from(components["java"])
             artifact(sourcesJar.get())
+            artifact(javadocJar.get())
             pom {
                 groupId = groupId
                 artifactId = artifactId
                 version = project.version.toString()
+                packaging = "jar"
+                name.set("Vert.x Redis Heimdall client")
+                description.set("Redis client based on the official one https://vertx.io/docs/vertx-redis-client/java/. " +
+                        "This client will provide some additional features like reconnect capabilities, Event bus events on reconnecting related activities.")
+                url.set("https://github.com/wem/vertx-redis-client-heimdall")
+                scm {
+                    connection.set("scm:https://github.com/wem/vertx-redis-client-heimdall.git")
+                    developerConnection.set("scm:https://github.com/wem/vertx-redis-client-heimdall.git")
+                    url.set("https://github.com/wem/vertx-redis-client-heimdall")
+                }
                 licenses {
                     license {
                         name.set("The MIT License")
-                        url.set("http://www.opensource.org/licenses/MIT")
+                        url.set("https://www.opensource.org/licenses/MIT")
                         distribution.set("https://github.com/wem/vertx-redis-client-heimdall")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("Michel Werren")
+                        name.set("Michel Werren")
+                        email.set("michel.werren@source-motion.ch")
                     }
                 }
             }
         }
     }
+}
+
+signing {
+    sign(publishing.publications[publicationName])
 }
