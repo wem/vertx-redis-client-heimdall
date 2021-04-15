@@ -56,3 +56,11 @@ Please check the README.
 #### Handle "Broken pipe" IOException as connection issue and initiate reconnect
 - Thrown java.io.IOException with message "Broken pipe" will be handled now as connection issue and therefore the client 
   will reconnect.
+
+## [0.0.7.1]
+### Maintenance
+#### Moved to Maven central
+Because Bintray will become recently deprecated, this project is now available on Maven central. Please check README.
+#### GroupId changed
+To be more consistent over all Vert.x related Source-motion projects, we did change the groupId to `ch.sourcemotion.vertx`. 
+

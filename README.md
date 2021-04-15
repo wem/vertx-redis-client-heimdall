@@ -8,33 +8,35 @@ This client enhances the original project with reconnect capabilities.
 ![Gradle](doc/gradle.png)
 ```groovy
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
-implementation "ch.sourcemotion.vertx.redis:vertx-redis-client-heimdall:[version]"
+implementation "ch.sourcemotion.vertx:vertx-redis-client-heimdall:[version]"
 ```
 
 ![Gradle](doc/gradle.png) (Kotlin DSL)
 ```kotlin
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
-implementation("ch.sourcemotion.vertx.redis:vertx-redis-client-heimdall:[version]")
+implementation("ch.sourcemotion.vertx:vertx-redis-client-heimdall:[version]")
 ```
+> To find the most recent version you could use the following link
+> https://search.maven.org/search?q=g:ch.sourcemotion.vertx%20a:vertx-redis-client-heimdall
   
 ![Maven](doc/maven.png)
 ```xml
 <repositories>
     <repository>
-        <id>jcenter</id>
-        <name>jcenter</name>
-        <url>https://jcenter.bintray.com</url>
+        <id>central</id>
+        <name>Maven Central</name>
+        <url>https://repo1.maven.org/maven2</url>
     </repository>
 </repositories>
 
 <dependency>
-    <groupId>ch.sourcemotion.vertx.redis</groupId>
+    <groupId>ch.sourcemotion.vertx</groupId>
     <artifactId>vertx-redis-client-heimdall</artifactId>
     <version>[version]</version>
 </dependency>
