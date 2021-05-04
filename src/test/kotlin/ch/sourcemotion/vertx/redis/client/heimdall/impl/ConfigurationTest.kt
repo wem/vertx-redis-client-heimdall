@@ -6,6 +6,7 @@ import ch.sourcemotion.vertx.redis.client.heimdall.testing.AbstractRedisTest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.redis.client.sendAwait
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.Request
@@ -27,7 +28,7 @@ internal class ConfigurationTest : AbstractRedisTest() {
         coroutineScope {
             repeat(maxPoolSize + maxPoolWaiting) {
                 launch {
-                    sut.sendAwait(Request.cmd(Command.GET).arg("key"))
+                    sut.send(Request.cmd(Command.GET).arg("key")).await()
                 }
             }
         }
@@ -45,7 +46,7 @@ internal class ConfigurationTest : AbstractRedisTest() {
         coroutineScope {
             repeat(maxPoolSize + maxPoolWaiting) {
                 launch {
-                    sut.sendAwait(Request.cmd(Command.GET).arg("key"))
+                    sut.send(Request.cmd(Command.GET).arg("key")).await()
                 }
             }
         }
@@ -64,7 +65,7 @@ internal class ConfigurationTest : AbstractRedisTest() {
             coroutineScope {
                 repeat((maxPoolSize + maxPoolWaiting) * 2) {
                     launch {
-                        sut.sendAwait(Request.cmd(Command.GET).arg("key"))
+                        sut.send(Request.cmd(Command.GET).arg("key")).await()
                     }
                 }
             }
@@ -84,7 +85,7 @@ internal class ConfigurationTest : AbstractRedisTest() {
             coroutineScope {
                 repeat((maxPoolSize + maxPoolWaiting) * 2) {
                     launch {
-                        sut.sendAwait(Request.cmd(Command.GET).arg("key"))
+                        sut.send(Request.cmd(Command.GET).arg("key")).await()
                     }
                 }
             }
