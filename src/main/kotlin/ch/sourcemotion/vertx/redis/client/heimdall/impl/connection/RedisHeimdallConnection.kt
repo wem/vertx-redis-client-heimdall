@@ -10,6 +10,7 @@ import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
 import io.vertx.redis.client.impl.types.ErrorType
+import java.io.IOException
 import java.nio.channels.ClosedChannelException
 
 internal open class RedisHeimdallConnection(
@@ -70,6 +71,9 @@ internal open class RedisHeimdallConnection(
         } else if (cause is RedisHeimdallException) {
             cause
         } else if (cause is ClosedChannelException) {
+            RedisHeimdallException(Reason.CONNECTION_ISSUE, cause.message, cause)
+                .also { connectionIssueHandler.handle(it) }
+        } else if (cause is IOException && cause.message == "Broken pipe") {
             RedisHeimdallException(Reason.CONNECTION_ISSUE, cause.message, cause)
                 .also { connectionIssueHandler.handle(it) }
         } else RedisHeimdallException(Reason.UNSPECIFIED, cause.message, cause)
