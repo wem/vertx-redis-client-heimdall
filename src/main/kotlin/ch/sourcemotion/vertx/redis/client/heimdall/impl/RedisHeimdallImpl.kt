@@ -29,7 +29,8 @@ internal open class RedisHeimdallImpl(
 
     private var delegate: Redis = Redis.createClient(vertx, options.redisOptions)
 
-    private var reconnectingInProgress = false
+    var reconnectingInProgress = false
+        private set
 
     private val reconnectingHandler: RedisReconnectProcess = configureRedisConnectionFailureHandler()
 
