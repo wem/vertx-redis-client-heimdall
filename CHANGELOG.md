@@ -44,3 +44,14 @@ Now the Heimdall client will keep the previous delegated client open until a "fr
 ### Feature
 #### Vert.x 4
 - Migration to Vert.x 4
+
+## [1.0.1]
+### Maintenance
+#### Bump versions
+- Vert.x: 4.1.0
+- Kotlin: 1.4.32 / Coroutines 1.4.3
+- 
+#### Moved to Maven central
+Because Bintray will become recently deprecated, this project is now available on Maven central. Please check README.
+#### GroupId changed
+To be more consistent over all Vert.x related Source-motion projects, we did change the groupId to `ch.sourcemotion.vertx`. 
