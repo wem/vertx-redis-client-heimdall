@@ -140,6 +140,7 @@ internal open class RedisHeimdallImpl(
     private fun handleConnectionFailure(cause: Throwable) {
         // We avoid reconnection process if the client was closed
         if (closed) {
+            logger.debug("Already closed client will not reconnect")
             return
         }
         // Avoid multiple, parallel reconnection processes

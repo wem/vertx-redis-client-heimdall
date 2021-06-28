@@ -26,7 +26,7 @@ internal class ConfigurationTest : AbstractRedisTest() {
         val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
         coroutineScope {
-            repeat(maxPoolSize + maxPoolWaiting) {
+            repeat(maxPoolSize + maxPoolWaiting - 1) {
                 launch {
                     sut.send(Request.cmd(Command.GET).arg("key")).await()
                 }
@@ -44,7 +44,7 @@ internal class ConfigurationTest : AbstractRedisTest() {
         val sut = RedisHeimdall.create(vertx, redisHeimdallOptions)
 
         coroutineScope {
-            repeat(maxPoolSize + maxPoolWaiting) {
+            repeat(maxPoolSize + maxPoolWaiting - 1) {
                 launch {
                     sut.send(Request.cmd(Command.GET).arg("key")).await()
                 }

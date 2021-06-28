@@ -275,7 +275,6 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     }
 
     @Test
-//    @RepeatedTest(10)
     internal fun close_connection_while_send_commands_in_flight(testContext: VertxTestContext) {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
         val redisOptions = redisHeimdallOptions.redisOptions
@@ -306,7 +305,6 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
     }
 
     @Test
-//    @RepeatedTest(10)
     internal fun close_connection_while_batches_in_flight(testContext: VertxTestContext) {
         val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
         val commandCount = redisHeimdallOptions.redisOptions.maxPoolSize
@@ -356,7 +354,7 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
             }
 
             // Little bit hacky, but to make the delegate accessible from outside would also be bad.
-            val sut = RedisHeimdallImpl(vertx, redisHeimdallOptions)
+            val sut = RedisHeimdallImpl(vertx, redisHeimdallOptions).markAsTestClient()
             val delegateField = sut::class.java.getDeclaredField("delegate")
             delegateField.isAccessible = true
             delegateField.set(sut, failingDelegate)
@@ -380,9 +378,9 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
                 vertx,
                 redisHeimdallOptions,
                 listOf(PostReconnectJob { Future.failedFuture(Exception("Test exception")) })
-            )
+            ).markAsTestClient()
 
-            sut.verifyConnectivityWithPingPongBySend()
+            sut.verifyConnectivityWithPingPongBySend() // Ensure open connection
 
             closeAndResumeConnection(redisHeimdallOptions)
         }
