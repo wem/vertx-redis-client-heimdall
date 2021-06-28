@@ -86,11 +86,11 @@ internal abstract class AbstractRedisTest : AbstractVertxTest() {
             "Simulate connection issue. Close the connection for $connectionIssueDurationSeconds seconds. " +
                     "Resume afterwards the connectivity and return after further $connectionIssueDurationSeconds seconds"
         )
-        downStreamTimeout()
+        closeConnection()
         // Ensure reconnect process started
-        delay(options.reconnectInterval)
+        delay(options.reconnectInterval * 2)
         removeConnectionIssues()
         // Give enough time to reconnect
-        delay(options.reconnectInterval)
+        delay(options.reconnectInterval * 2)
     }
 }
