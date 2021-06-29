@@ -46,12 +46,21 @@ Now the Heimdall client will keep the previous delegated client open until a "fr
 - Migration to Vert.x 4
 
 ## [1.0.1]
+### Fixed
+#### Handle "Broken pipe" IOException as connection issue and initiate reconnect
+- Thrown java.io.IOException with message "Broken pipe" will be handled now as connection issue and therefore the client
+  will reconnect.
 ### Maintenance
 #### Bump versions
 - Vert.x: 4.1.0
 - Kotlin: 1.4.32 / Coroutines 1.4.3
-- 
 #### Moved to Maven central
 Because Bintray will become recently deprecated, this project is now available on Maven central. Please check README.
 #### GroupId changed
-To be more consistent over all Vert.x related Source-motion projects, we did change the groupId to `ch.sourcemotion.vertx`. 
+To be more consistent over all Vert.x related Source-motion projects, we did change the groupId to `ch.sourcemotion.vertx`.
+
+## [1.1.0]
+### Feature
+#### RedisHeimdallLight
+- This library now provides a single connection client, with the same capabilities as the common client (reconnect, etc.).
+  Please check the README.
