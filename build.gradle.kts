@@ -1,32 +1,36 @@
+import org.owasp.dependencycheck.gradle.extension.AnalyzerExtension
+
 plugins {
     java
-    kotlin("jvm") version "1.4.32"
-    id("org.jetbrains.dokka") version "1.4.30"
+    kotlin("jvm") version "1.6.10"
+    id("org.jetbrains.dokka") version "1.6.0"
     `maven-publish`
     signing
+    id("org.jetbrains.kotlinx.kover") version "0.4.4"
+    id("org.owasp.dependencycheck") version "6.5.1"
 }
 
 object Version {
-    const val VERTX = "4.1.0"
-    const val COROUTINES = "1.4.3"
-    const val JACKSON = "2.11.3"
+    const val VERTX = "4.2.2"
+    const val COROUTINES = "1.5.2"
+    const val JACKSON = "2.11.4"
 
     object Testing {
-        const val JUNIT = "5.7.1"
-        const val TEST_CONTAINERS = "1.15.3"
-        const val TOXI_PROXY = "2.1.4"
-        const val KOTEST = "4.4.3"
-        const val LOG4J = "2.13.3"
-        const val MOCKK = "1.11.0"
+        const val JUNIT = "5.8.2"
+        const val TEST_CONTAINERS = "1.16.2"
+        const val TOXI_PROXY = "2.1.5"
+        const val KOTEST = "5.0.3"
+        const val LOG4J = "2.17.0"
+        const val MOCKK = "1.12.1"
     }
 
     object Build {
-        const val KOTLIN_AS_JAVA_PLUGIN = "1.4.30"
+        const val KOTLIN_AS_JAVA_PLUGIN = "1.6.0"
+        const val JACOCO_TOOLING = "0.8.7"
     }
 }
 
 repositories {
-    jcenter()
     mavenCentral()
 }
 
@@ -64,34 +68,55 @@ dependencies {
 
 fun vertx(module: String): String = "io.vertx:vertx-$module"
 
+kover {
+    isEnabled = true
+    coverageEngine.set(kotlinx.kover.api.CoverageEngine.JACOCO)
+    jacocoEngineVersion.set(Version.Build.JACOCO_TOOLING)
+    generateReportOnCheck.set(true)
+}
+
+dependencyCheck {
+    // Can be set to e.g. "7" when this false positive is fixed: https://github.com/jeremylong/DependencyCheck/issues/3865
+    failBuildOnCVSS = 10.0F
+    autoUpdate = true
+    analyzers(closureOf<AnalyzerExtension> {
+        assemblyEnabled = false
+    })
+}
+
 tasks {
     compileKotlin {
         kotlinOptions {
-            jvmTarget = "1.8"
-            apiVersion = "1.4"
-            languageVersion = "1.4"
-            freeCompilerArgs = listOf("-Xinline-classes")
+            jvmTarget = "11"
+            apiVersion = "1.6"
+            languageVersion = "1.6"
+            freeCompilerArgs += listOf("-Xinline-classes")
         }
     }
     compileTestKotlin {
         kotlinOptions {
-            jvmTarget = "1.8"
-            apiVersion = "1.4"
-            languageVersion = "1.4"
-            freeCompilerArgs = listOf("-Xinline-classes")
+            jvmTarget = "11"
+            apiVersion = "1.6"
+            languageVersion = "1.6"
+            freeCompilerArgs += listOf("-Xinline-classes")
         }
     }
     compileJava {
-        sourceCompatibility = "1.8"
-        targetCompatibility = "1.8"
+        sourceCompatibility = "11"
+        targetCompatibility = "11"
     }
     compileTestJava {
-        sourceCompatibility = "1.8"
-        targetCompatibility = "1.8"
+        sourceCompatibility = "11"
+        targetCompatibility = "11"
     }
+
     test {
         systemProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory")
         useJUnitPlatform()
+    }
+
+    build {
+        dependsOn.add(dependencyCheckAnalyze)
     }
 }
 
