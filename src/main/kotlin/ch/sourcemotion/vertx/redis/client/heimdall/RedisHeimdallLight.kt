@@ -103,29 +103,12 @@ class RedisHeimdallLight(
         return p.future()
     }
 
-    override fun connect(handler: Handler<AsyncResult<RedisConnection>>): Redis {
-        val conn = connection
-        when {
-            conn != null -> handler.handle(Future.succeededFuture(conn))
-            started.not() -> pendingStartCommands.add {
-                handler.handle(Future.succeededFuture(conn))
-            }
-            redisHeimdall.reconnectingInProgress ->
-                handler.handle(Future.failedFuture(RedisHeimdallException(RedisHeimdallException.Reason.ACCESS_DURING_RECONNECT)))
-            else -> {
-                handler.handle(Future.failedFuture(RedisHeimdallException(RedisHeimdallException.Reason.CONNECTION_ISSUE)))
-            }
-        }
-        return this
-    }
-
     private fun handleIfConnectionIssue(cause: Throwable) {
         if (cause is RedisHeimdallException && cause.reason == RedisHeimdallException.Reason.CONNECTION_ISSUE) {
             connection?.close() // Return the connection to pool
             connection = null
         }
     }
-
 
     /**
      * Called after successful reconnect by [redisHeimdall]. This will ensure a valid connection got obtained

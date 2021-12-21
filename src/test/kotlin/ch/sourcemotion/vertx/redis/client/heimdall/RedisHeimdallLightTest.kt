@@ -12,8 +12,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.await
-import io.vertx.kotlin.redis.client.batchAwait
-import io.vertx.kotlin.redis.client.sendAwait
 import io.vertx.redis.client.Command
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
@@ -31,8 +29,16 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
     internal fun tearDown() = asyncBeforeOrAfter {
         removeConnectionIssues()
         val client = RedisHeimdallLight(vertx, defaultOptions)
-        client.sendAwait(Request.cmd(Command.FLUSHALL))
+        client.send(Request.cmd(Command.FLUSHALL)).await()
         client.close()
+    }
+
+    @Test
+    internal fun connect(testContext: VertxTestContext) = testContext.async {
+        val sut = RedisHeimdallLight(vertx, defaultOptions).markAsTestClient()
+        val expectedConnection = sut.connect().await()
+        sut.connect().await().shouldBe(expectedConnection)
+        sut.connect().await().shouldBe(expectedConnection)
     }
 
     @Test
