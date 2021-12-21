@@ -64,3 +64,14 @@ To be more consistent over all Vert.x related Source-motion projects, we did cha
 #### RedisHeimdallLight
 - This library now provides a single connection client, with the same capabilities as the common client (reconnect, etc.).
   Please check the README.
+
+## [1.2.0]
+### Improvement
+#### OWASP dependency check
+- Integrate OWASP dependency check Gradle plugin
+### Maintenance
+#### Bump versions
+- Vert.x: 4.2.2
+- Kotlin: 1.6.10 / Coroutines 1.5.2
+#### Code cleanup and tests
+- Removed obsolete code and implement missing test
