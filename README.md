@@ -93,6 +93,10 @@ val redisHeimdallLight = RedisHeimdall.createLight(vertx, RedisHeimdallOptions()
 
 > This client will probably provide the best performance unless you need connection pooling.
 
+#### Command queueing during initial connect
+Commands against Redis getting queued until connected. On successful connect they are executed. If the initial connect fails, 
+the callers will fail fast. There is no queueing for a later, delayed, successful connect. 
+
 ### Subscription client
 
 An additional feature of this client is a specialized variant for subscription purposes only.
