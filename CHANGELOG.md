@@ -75,3 +75,15 @@ To be more consistent over all Vert.x related Source-motion projects, we did cha
 - Kotlin: 1.6.10 / Coroutines 1.5.2
 #### Code cleanup and tests
 - Removed obsolete code and implement missing test
+
+## [1.2.1]
+### Improvement
+#### Bump versions
+- Vert.x: 4.2.3
+- Jackson: 2.13.1
+- Dokka (Gradle plugin): 1.6.10
+#### OWASP dependency check
+- CVSS level set to 7 (high and higher)
+### Fixed
+#### Fast fail on initial connect issue on light client
+- Callers are fail fast from now if there is an initial connect issue.
