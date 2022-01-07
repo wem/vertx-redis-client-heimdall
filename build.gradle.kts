@@ -3,17 +3,17 @@ import org.owasp.dependencycheck.gradle.extension.AnalyzerExtension
 plugins {
     java
     kotlin("jvm") version "1.6.10"
-    id("org.jetbrains.dokka") version "1.6.0"
+    id("org.jetbrains.dokka") version "1.6.10"
     `maven-publish`
     signing
     id("org.jetbrains.kotlinx.kover") version "0.4.4"
-    id("org.owasp.dependencycheck") version "6.5.1"
+    id("org.owasp.dependencycheck") version "6.5.2.1"
 }
 
 object Version {
-    const val VERTX = "4.2.2"
+    const val VERTX = "4.2.3"
     const val COROUTINES = "1.5.2"
-    const val JACKSON = "2.11.4"
+    const val JACKSON = "2.13.1"
 
     object Testing {
         const val JUNIT = "5.8.2"
@@ -25,7 +25,7 @@ object Version {
     }
 
     object Build {
-        const val KOTLIN_AS_JAVA_PLUGIN = "1.6.0"
+        const val KOTLIN_AS_JAVA_PLUGIN = "1.6.10"
         const val JACOCO_TOOLING = "0.8.7"
     }
 }
@@ -76,12 +76,12 @@ kover {
 }
 
 dependencyCheck {
-    // Can be set to e.g. "7" when this false positive is fixed: https://github.com/jeremylong/DependencyCheck/issues/3865
-    failBuildOnCVSS = 10.0F
+    failBuildOnCVSS = 7.0F
     autoUpdate = true
     analyzers(closureOf<AnalyzerExtension> {
         assemblyEnabled = false
     })
+    skipConfigurations.addAll(configurations.filter { it.name.contains("dokka") }.map { it.name })
 }
 
 tasks {
