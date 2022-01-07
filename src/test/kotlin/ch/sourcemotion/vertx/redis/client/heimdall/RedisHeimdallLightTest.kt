@@ -16,6 +16,7 @@ import io.vertx.redis.client.Command
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -46,14 +47,12 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
         val sut = RedisHeimdallLight(vertx, defaultOptions.apply { redisOptions.maxWaitingHandlers = 10000 })
             .markAsTestClient()
 
-        coroutineScope {
-            repeat(10000) { idx ->
-                launch {
-                    sut.sendCmd().also {
-                        testContext.verifySendResponse(it, idx + 1)
-                    }
-                    checkpoint.flag()
+        repeat(10000) { idx ->
+            launch {
+                sut.sendCmd().await().also {
+                    testContext.verifySendResponse(it, idx + 1)
                 }
+                checkpoint.flag()
             }
         }
     }
@@ -63,14 +62,12 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
         val sut = RedisHeimdallLight(vertx, defaultOptions.apply { redisOptions.maxWaitingHandlers = 10000 })
             .markAsTestClient()
 
-        coroutineScope {
-            repeat(10000) { idx ->
-                launch {
-                    sut.sendBatch().also {
-                        testContext.verifyBatchResponse(it, idx + 1)
-                    }
-                    checkpoint.flag()
+        repeat(10000) { idx ->
+            launch {
+                sut.sendBatch().await().also {
+                    testContext.verifyBatchResponse(it, idx + 1)
                 }
+                checkpoint.flag()
             }
         }
     }
@@ -89,7 +86,7 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
             vertx.eventBus().consumer<Unit>(defaultOptions.reconnectingSucceededNotificationAddress) {
                 testScope.launch {
                     runCatching {
-                        sut.sendCmd().also {
+                        sut.sendCmd().await().also {
                             testContext.verifySendResponse(it, 2)
                             commandAfterReconnectCheckpoint.flag()
                         }
@@ -97,9 +94,9 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
                 }
             }
 
-            sut.sendCmd().also { testContext.verifySendResponse(it, 1) }
+            sut.sendCmd().await().also { testContext.verifySendResponse(it, 1) }
             closeConnection()
-            shouldThrow<RedisHeimdallException> { sut.sendCmd() }
+            shouldThrow<RedisHeimdallException> { sut.sendCmd().await() }
         }
 
     @Test
@@ -116,7 +113,7 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
             vertx.eventBus().consumer<Unit>(defaultOptions.reconnectingSucceededNotificationAddress) {
                 testScope.launch {
                     runCatching {
-                        sut.sendBatch().also {
+                        sut.sendBatch().await().also {
                             testContext.verifyBatchResponse(it, 2)
                             commandAfterReconnectCheckpoint.flag()
                         }
@@ -124,9 +121,9 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
                 }
             }
 
-            sut.sendBatch().also { testContext.verifyBatchResponse(it, 1) }
+            sut.sendBatch().await().also { testContext.verifyBatchResponse(it, 1) }
             closeConnection()
-            shouldThrow<RedisHeimdallException> { sut.sendBatch() }
+            shouldThrow<RedisHeimdallException> { sut.sendBatch().await() }
         }
 
     @Test
@@ -136,16 +133,16 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
 
             val sut = RedisHeimdallLight(vertx, defaultOptions).markAsTestClient()
 
-            coroutineScope {
-                repeat(1000) { idx ->
-                    launch {
-                        sut.sendCmd().also {
-                            testContext.verifySendResponse(it, idx + 1)
+            repeat(1000) {
+                launch {
+                    sut.sendCmd().onFailure {
+                        testContext.verify {
+                            val cause = it.shouldBeInstanceOf<RedisHeimdallException>()
+                            cause.reason.shouldBe(CONNECTION_ISSUE)
                         }
                         checkpoint.flag()
-                    }
+                    }.onSuccess { testContext.failNow("Commands on initial connection issue should fail") }
                 }
-                removeConnectionIssues()
             }
         }
 
@@ -156,16 +153,16 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
 
             val sut = RedisHeimdallLight(vertx, defaultOptions).markAsTestClient()
 
-            coroutineScope {
-                repeat(1000) { idx ->
-                    launch {
-                        sut.sendBatch().also {
-                            testContext.verifyBatchResponse(it, idx + 1)
+            repeat(1000) {
+                launch {
+                    sut.sendBatch().onFailure {
+                        testContext.verify {
+                            val cause = it.shouldBeInstanceOf<RedisHeimdallException>()
+                            cause.reason.shouldBe(CONNECTION_ISSUE)
                         }
                         checkpoint.flag()
-                    }
+                    }.onSuccess { testContext.failNow("Commands on initial connection issue should fail") }
                 }
-                removeConnectionIssues()
             }
         }
 
@@ -181,7 +178,7 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
                     launch {
                         // Some commands will fail, but all must get executed and if success the result must be
                         // in the expected range
-                        runCatching { sut.sendCmd() }
+                        runCatching { sut.sendCmd().await() }
                             .onSuccess {
                                 testContext.verify { it.shouldNotBeNull().toInteger().shouldBeBetween(1, 1000) }
                             }
@@ -210,7 +207,7 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
                     launch {
                         // Some commands will fail, but all must get executed and if success the result must be
                         // in the expected range
-                        runCatching { sut.sendBatch() }
+                        runCatching { sut.sendBatch().await() }
                             .onSuccess {
                                 testContext.verify {
                                     it.shouldHaveSize(1).first().shouldNotBeNull().toInteger().shouldBeBetween(1, 1000)
@@ -237,9 +234,9 @@ internal class RedisHeimdallLightTest : AbstractRedisTest() {
         verify { response.shouldNotBeNull().toInteger().shouldBe(expectedValue) }
     }
 
-    private suspend fun RedisHeimdall.sendCmd() =
-        send(Request.cmd(Command.INCR).arg("key")).await()
+    private fun RedisHeimdall.sendCmd() =
+        send(Request.cmd(Command.INCR).arg("key"))
 
-    private suspend fun RedisHeimdall.sendBatch() =
-        batch(listOf(Request.cmd(Command.INCR).arg("key"))).await()
+    private fun RedisHeimdall.sendBatch() =
+        batch(listOf(Request.cmd(Command.INCR).arg("key")))
 }

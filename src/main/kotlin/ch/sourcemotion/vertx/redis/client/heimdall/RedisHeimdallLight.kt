@@ -38,15 +38,17 @@ class RedisHeimdallLight(
                 }.onSuccess { response ->
                     p.complete(response)
                 }
-            started.not() -> pendingStartCommands.add {
-                it.send(command)
-                    .onFailure { cause ->
-                        handleIfConnectionIssue(cause)
-                        p.fail(cause)
-                    }.onSuccess { response ->
-                        p.complete(response)
-                    }
-            }
+            started.not() -> pendingStartCommands.add(object : PendingCommand(p) {
+                override fun execute(connection: RedisConnection) {
+                    connection.send(command)
+                        .onFailure { cause ->
+                            handleIfConnectionIssue(cause)
+                            p.fail(cause)
+                        }.onSuccess { response ->
+                            p.complete(response)
+                        }
+                }
+            })
             redisHeimdall.reconnectingInProgress ->
                 p.fail(RedisHeimdallException(RedisHeimdallException.Reason.ACCESS_DURING_RECONNECT))
             else -> {
@@ -68,15 +70,17 @@ class RedisHeimdallLight(
                 }.onSuccess { responses ->
                     p.complete(responses)
                 }
-            started.not() -> pendingStartCommands.add {
-                it.batch(commands)
-                    .onFailure { cause ->
-                        handleIfConnectionIssue(cause)
-                        p.fail(cause)
-                    }.onSuccess { responses ->
-                        p.complete(responses)
-                    }
-            }
+            started.not() -> pendingStartCommands.add(object : PendingCommand(p) {
+                override fun execute(connection: RedisConnection) {
+                    connection.batch(commands)
+                        .onFailure { cause ->
+                            handleIfConnectionIssue(cause)
+                            p.fail(cause)
+                        }.onSuccess { responses ->
+                            p.complete(responses)
+                        }
+                }
+            })
             redisHeimdall.reconnectingInProgress ->
                 p.fail(RedisHeimdallException(RedisHeimdallException.Reason.ACCESS_DURING_RECONNECT))
             else -> {
@@ -91,9 +95,12 @@ class RedisHeimdallLight(
         val conn = connection
         when {
             conn != null -> p.complete(conn)
-            started.not() -> pendingStartCommands.add {
-                p.complete(it)
-            }
+            started.not() -> pendingStartCommands.add(object : PendingCommand(p) {
+                override fun execute(connection: RedisConnection) {
+                    p.complete(connection)
+                }
+            })
+
             redisHeimdall.reconnectingInProgress ->
                 p.fail(RedisHeimdallException(RedisHeimdallException.Reason.ACCESS_DURING_RECONNECT))
             else -> {
@@ -157,9 +164,19 @@ class RedisHeimdallLight(
                 this.connection = conn
                 started = true
                 p.complete()
+            }.onFailure {
+                cancelPendingStartCommands(it)
             }
         }
         return p.future()
+    }
+
+    private fun cancelPendingStartCommands(cause: Throwable) {
+        var pendingCommand: PendingCommand? = pendingStartCommands.poll()
+        while (pendingCommand != null) {
+            pendingCommand.cancel(cause)
+            pendingCommand = pendingStartCommands.poll()
+        }
     }
 
     private fun executePendingStartCommands(connection: RedisConnection) {
@@ -179,6 +196,9 @@ class RedisHeimdallLight(
     }
 }
 
-private fun interface PendingCommand {
-    fun execute(connection: RedisConnection)
+private abstract class PendingCommand(private val promise: Promise<*>) {
+    abstract fun execute(connection: RedisConnection)
+    fun cancel(cause: Throwable) {
+        promise.tryFail(cause)
+    }
 }
