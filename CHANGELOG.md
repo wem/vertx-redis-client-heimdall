@@ -87,3 +87,10 @@ To be more consistent over all Vert.x related Source-motion projects, we did cha
 ### Fixed
 #### Fast fail on initial connect issue on light client
 - Callers are fail fast from now if there is an initial connect issue.
+
+## [1.2.2]
+### Maintenance
+#### Bump versions
+- Vert.x: 4.2.4
+- Kotlin Coroutines 1.6.0
+- OWASP dependency check plugin: 6.5.3
