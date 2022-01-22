@@ -7,12 +7,12 @@ plugins {
     `maven-publish`
     signing
     id("org.jetbrains.kotlinx.kover") version "0.4.4"
-    id("org.owasp.dependencycheck") version "6.5.2.1"
+    id("org.owasp.dependencycheck") version "6.5.3"
 }
 
 object Version {
-    const val VERTX = "4.2.3"
-    const val COROUTINES = "1.5.2"
+    const val VERTX = "4.2.4"
+    const val COROUTINES = "1.6.0"
     const val JACKSON = "2.13.1"
 
     object Testing {
