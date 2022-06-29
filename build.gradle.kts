@@ -2,30 +2,30 @@ import org.owasp.dependencycheck.gradle.extension.AnalyzerExtension
 
 plugins {
     java
-    kotlin("jvm") version "1.6.10"
-    id("org.jetbrains.dokka") version "1.6.10"
+    kotlin("jvm") version "1.7.0"
+    id("org.jetbrains.dokka") version "1.7.0"
     `maven-publish`
     signing
-    id("org.jetbrains.kotlinx.kover") version "0.4.4"
-    id("org.owasp.dependencycheck") version "6.5.3"
+    id("org.jetbrains.kotlinx.kover") version "0.5.1"
+    id("org.owasp.dependencycheck") version "7.1.1"
 }
 
 object Version {
-    const val VERTX = "4.2.4"
-    const val COROUTINES = "1.6.0"
-    const val JACKSON = "2.13.1"
+    const val VERTX = "4.3.1"
+    const val COROUTINES = "1.6.2"
+    const val JACKSON = "2.13.3"
 
     object Testing {
         const val JUNIT = "5.8.2"
-        const val TEST_CONTAINERS = "1.16.2"
+        const val TEST_CONTAINERS = "1.17.2"
         const val TOXI_PROXY = "2.1.5"
         const val KOTEST = "5.0.3"
         const val LOG4J = "2.17.0"
-        const val MOCKK = "1.12.1"
+        const val MOCKK = "1.12.4"
     }
 
     object Build {
-        const val KOTLIN_AS_JAVA_PLUGIN = "1.6.10"
+        const val KOTLIN_AS_JAVA_PLUGIN = "1.7.0"
         const val JACOCO_TOOLING = "0.8.7"
     }
 }
@@ -36,7 +36,7 @@ repositories {
 
 dependencies {
     api(platform("io.vertx:vertx-dependencies:${Version.VERTX}"))
-    api(platform("org.apache.logging.log4j:log4j-bom:${Version.Testing.LOG4J}"))
+    testImplementation(platform("org.apache.logging.log4j:log4j-bom:${Version.Testing.LOG4J}"))
     testImplementation(platform("org.junit:junit-bom:${Version.Testing.JUNIT}"))
     testImplementation(platform("org.testcontainers:testcontainers-bom:${Version.Testing.TEST_CONTAINERS}"))
 
@@ -69,10 +69,9 @@ dependencies {
 fun vertx(module: String): String = "io.vertx:vertx-$module"
 
 kover {
-    isEnabled = true
     coverageEngine.set(kotlinx.kover.api.CoverageEngine.JACOCO)
     jacocoEngineVersion.set(Version.Build.JACOCO_TOOLING)
-    generateReportOnCheck.set(true)
+    generateReportOnCheck = true
 }
 
 dependencyCheck {
@@ -88,16 +87,16 @@ tasks {
     compileKotlin {
         kotlinOptions {
             jvmTarget = "11"
-            apiVersion = "1.6"
-            languageVersion = "1.6"
+            apiVersion = "1.7"
+            languageVersion = "1.7"
             freeCompilerArgs += listOf("-Xinline-classes")
         }
     }
     compileTestKotlin {
         kotlinOptions {
             jvmTarget = "11"
-            apiVersion = "1.6"
-            languageVersion = "1.6"
+            apiVersion = "1.7"
+            languageVersion = "1.7"
             freeCompilerArgs += listOf("-Xinline-classes")
         }
     }
