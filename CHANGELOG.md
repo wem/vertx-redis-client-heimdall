@@ -94,3 +94,16 @@ To be more consistent over all Vert.x related Source-motion projects, we did cha
 - Vert.x: 4.2.4
 - Kotlin Coroutines 1.6.0
 - OWASP dependency check plugin: 6.5.3
+
+## [1.2.3]
+### Maintenance
+#### Bump versions
+- Vert.x: 4.3.1
+- Kotlin 1.7.0
+- Kotlin Coroutines 1.6.2
+- Jackson 2.13.3
+- Some Gradle plugins
+- Some test libs
+#### Cade adjustments
+From Vert.x 4.2 to 4.3 there are some Redis internal changes, like behavior of connection when it's closed.
+Therefore, some exception mapping adjustment are needed.
