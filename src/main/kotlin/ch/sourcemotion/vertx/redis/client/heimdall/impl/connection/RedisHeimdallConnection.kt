@@ -37,9 +37,11 @@ internal open class RedisHeimdallConnection(
             connectionIssueHandler.handle(exception)
             promise.tryFail(exception)
         }
-        delegate.send(command)
-            .onSuccess { promise.tryComplete(it) }
-            .onFailure { mapConnectionIssueException(promise, it) }
+        runCatching {
+            delegate.send(command)
+                .onSuccess { promise.tryComplete(it) }
+                .onFailure { mapConnectionIssueException(promise, it) }
+        }.onFailure { mapConnectionIssueException(promise, it) }
         return promise.future()
     }
 
@@ -50,9 +52,11 @@ internal open class RedisHeimdallConnection(
             connectionIssueHandler.handle(exception)
             promise.tryFail(exception)
         }
-        delegate.batch(commands)
-            .onSuccess { promise.tryComplete(it) }
-            .onFailure { mapConnectionIssueException(promise, it) }
+        runCatching {
+            delegate.batch(commands)
+                .onSuccess { promise.tryComplete(it) }
+                .onFailure { mapConnectionIssueException(promise, it) }
+        }.onFailure { mapConnectionIssueException(promise, it) }
         return promise.future()
     }
 
@@ -74,6 +78,9 @@ internal open class RedisHeimdallConnection(
             RedisHeimdallException(Reason.CONNECTION_ISSUE, cause.message, cause)
                 .also { connectionIssueHandler.handle(it) }
         } else if (cause is IOException && cause.message == "Broken pipe") {
+            RedisHeimdallException(Reason.CONNECTION_ISSUE, cause.message, cause)
+                .also { connectionIssueHandler.handle(it) }
+        } else if (cause is IllegalStateException && cause.message == "Connection is closed") {
             RedisHeimdallException(Reason.CONNECTION_ISSUE, cause.message, cause)
                 .also { connectionIssueHandler.handle(it) }
         } else RedisHeimdallException(Reason.UNSPECIFIED, cause.message, cause)

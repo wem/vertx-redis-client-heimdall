@@ -16,6 +16,7 @@ import io.vertx.redis.client.Redis
 import io.vertx.redis.client.RedisConnection
 import io.vertx.redis.client.Request
 import io.vertx.redis.client.Response
+import io.vertx.redis.client.impl.CommandImpl
 
 internal open class RedisHeimdallImpl(
     protected val vertx: Vertx,
@@ -84,7 +85,7 @@ internal open class RedisHeimdallImpl(
     override fun send(command: Request): Future<Response> {
         val promise = Promise.promise<Response>()
 
-        if (command.command().isPubSub) {
+        if ((command.command() as CommandImpl).isPubSub) {
             promise.fail(
                 RedisHeimdallException(
                     Reason.UNSUPPORTED_ACTION,
@@ -111,7 +112,7 @@ internal open class RedisHeimdallImpl(
         val promise = Promise.promise<List<Response>>()
 
         for (req in commands) {
-            if (req.command().isPubSub) {
+            if ((req.command() as CommandImpl).isPubSub) {
                 // mixing pubSub cannot be used on a one-shot operation
                 promise.fail("PubSub command in connection-less batch not allowed")
                 return promise.future()
