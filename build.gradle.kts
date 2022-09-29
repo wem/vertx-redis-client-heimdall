@@ -1,32 +1,33 @@
+import kotlinx.kover.api.JacocoEngine
 import org.owasp.dependencycheck.gradle.extension.AnalyzerExtension
 
 plugins {
     java
-    kotlin("jvm") version "1.7.0"
-    id("org.jetbrains.dokka") version "1.7.0"
+    kotlin("jvm") version "1.7.20"
+    id("org.jetbrains.dokka") version "1.7.10"
     `maven-publish`
     signing
-    id("org.jetbrains.kotlinx.kover") version "0.5.1"
-    id("org.owasp.dependencycheck") version "7.1.1"
+    id("org.jetbrains.kotlinx.kover") version "0.6.0"
+    id("org.owasp.dependencycheck") version "7.2.1"
 }
 
 object Version {
-    const val VERTX = "4.3.1"
-    const val COROUTINES = "1.6.2"
+    const val VERTX = "4.3.3"
+    const val COROUTINES = "1.6.4"
     const val JACKSON = "2.13.3"
 
     object Testing {
-        const val JUNIT = "5.8.2"
-        const val TEST_CONTAINERS = "1.17.2"
-        const val TOXI_PROXY = "2.1.5"
-        const val KOTEST = "5.0.3"
-        const val LOG4J = "2.17.0"
-        const val MOCKK = "1.12.4"
+        const val JUNIT = "5.9.1"
+        const val TEST_CONTAINERS = "1.17.3"
+        const val TOXI_PROXY = "2.1.7"
+        const val KOTEST = "5.4.2"
+        const val LOG4J = "2.19.0"
+        const val MOCKK = "1.13.2"
     }
 
     object Build {
-        const val KOTLIN_AS_JAVA_PLUGIN = "1.7.0"
-        const val JACOCO_TOOLING = "0.8.7"
+        const val KOTLIN_AS_JAVA_PLUGIN = "1.7.10"
+        const val JACOCO_TOOLING = "0.8.8"
     }
 }
 
@@ -69,9 +70,13 @@ dependencies {
 fun vertx(module: String): String = "io.vertx:vertx-$module"
 
 kover {
-    coverageEngine.set(kotlinx.kover.api.CoverageEngine.JACOCO)
-    jacocoEngineVersion.set(Version.Build.JACOCO_TOOLING)
-    generateReportOnCheck = true
+    engine.set(JacocoEngine(Version.Build.JACOCO_TOOLING))
+    xmlReport{
+        onCheck.set(true)
+    }
+    htmlReport {
+        onCheck.set(true)
+    }
 }
 
 dependencyCheck {
