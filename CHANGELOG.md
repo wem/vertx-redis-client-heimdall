@@ -107,3 +107,14 @@ To be more consistent over all Vert.x related Source-motion projects, we did cha
 #### Cade adjustments
 From Vert.x 4.2 to 4.3 there are some Redis internal changes, like behavior of connection when it's closed.
 Therefore, some exception mapping adjustment are needed.
+
+## [1.2.4]
+### Maintenance
+#### Bump versions
+- Vert.x: 4.3.3
+- Kotlin: 1.7.20
+- Kotlin Coroutines: 1.6.4
+- OWASP dependency check plugin: 7.2.1
+- Gradle: 7.5.1 
+- Some other Gradle plugins
+- Some test libs
