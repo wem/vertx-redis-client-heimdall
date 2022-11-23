@@ -118,3 +118,13 @@ Therefore, some exception mapping adjustment are needed.
 - Gradle: 7.5.1 
 - Some other Gradle plugins
 - Some test libs
+
+## [1.2.5]
+### Maintenance
+#### Bump versions
+- Vert.x: 4.3.5
+- Kotlin: 1.7.21
+- Jackson: 2.14.0
+- OWASP dependency check plugin: 7.3.2
+- Some other Gradle plugins
+- Some test libs
