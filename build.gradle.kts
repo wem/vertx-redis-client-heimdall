@@ -1,26 +1,28 @@
-import kotlinx.kover.api.JacocoEngine
 import org.owasp.dependencycheck.gradle.extension.AnalyzerExtension
 
 plugins {
     java
-    kotlin("jvm") version "1.7.20"
-    id("org.jetbrains.dokka") version "1.7.10"
+    kotlin("jvm") version "1.7.21"
+    id("org.jetbrains.dokka") version "1.7.20"
     `maven-publish`
     signing
-    id("org.jetbrains.kotlinx.kover") version "0.6.0"
-    id("org.owasp.dependencycheck") version "7.2.1"
+    id("org.jetbrains.kotlinx.kover") version "0.6.1"
+    id("org.owasp.dependencycheck") version "7.3.2"
 }
 
 object Version {
-    const val VERTX = "4.3.3"
+    const val JAVA = "11"
+    const val KOTLIN_MAJOR = "1.7"
+
+    const val VERTX = "4.3.5"
     const val COROUTINES = "1.6.4"
-    const val JACKSON = "2.13.3"
+    const val JACKSON = "2.14.0"
 
     object Testing {
         const val JUNIT = "5.9.1"
-        const val TEST_CONTAINERS = "1.17.3"
+        const val TEST_CONTAINERS = "1.17.6"
         const val TOXI_PROXY = "2.1.7"
-        const val KOTEST = "5.4.2"
+        const val KOTEST = "5.5.4"
         const val LOG4J = "2.19.0"
         const val MOCKK = "1.13.2"
     }
@@ -70,7 +72,7 @@ dependencies {
 fun vertx(module: String): String = "io.vertx:vertx-$module"
 
 kover {
-    engine.set(JacocoEngine(Version.Build.JACOCO_TOOLING))
+    engine.set(kotlinx.kover.api.DefaultIntellijEngine)
     xmlReport{
         onCheck.set(true)
     }
@@ -91,27 +93,25 @@ dependencyCheck {
 tasks {
     compileKotlin {
         kotlinOptions {
-            jvmTarget = "11"
-            apiVersion = "1.7"
-            languageVersion = "1.7"
-            freeCompilerArgs += listOf("-Xinline-classes")
+            jvmTarget = Version.JAVA
+            apiVersion = Version.KOTLIN_MAJOR
+            languageVersion = Version.KOTLIN_MAJOR
         }
     }
     compileTestKotlin {
         kotlinOptions {
-            jvmTarget = "11"
-            apiVersion = "1.7"
-            languageVersion = "1.7"
-            freeCompilerArgs += listOf("-Xinline-classes")
+            jvmTarget = Version.JAVA
+            apiVersion = Version.KOTLIN_MAJOR
+            languageVersion = Version.KOTLIN_MAJOR
         }
     }
     compileJava {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
+        sourceCompatibility = Version.JAVA
+        targetCompatibility = Version.JAVA
     }
     compileTestJava {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
+        sourceCompatibility = Version.JAVA
+        targetCompatibility = Version.JAVA
     }
 
     test {
