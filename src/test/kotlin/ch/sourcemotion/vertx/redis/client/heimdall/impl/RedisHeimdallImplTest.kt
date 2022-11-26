@@ -368,16 +368,22 @@ internal class RedisHeimdallImplTest : AbstractRedisTest() {
 
     @Test
     internal fun failing_post_reconnect_job_will_start_reconnect_again(testContext: VertxTestContext) =
-        testContext.async(2) { checkpoint ->
+        testContext.async {
+            val reconnectNotificationCheckpoint = testContext.checkpoint(3)
+            val failingPostReconnectJobCheckpoint = testContext.checkpoint(3)
+
             val redisHeimdallOptions = getDefaultRedisHeimdallOptions()
             eventBus.consumer<Unit>(redisHeimdallOptions.reconnectingStartNotificationAddress) {
-                checkpoint.flag()
+                reconnectNotificationCheckpoint.flag()
             }
 
             val sut = RedisHeimdallImpl(
                 vertx,
                 redisHeimdallOptions,
-                listOf(PostReconnectJob { Future.failedFuture(Exception("Test exception")) })
+                listOf(PostReconnectJob {
+                    failingPostReconnectJobCheckpoint.flag()
+                    Future.failedFuture(Exception("Test exception")) }
+                )
             ).markAsTestClient()
 
             sut.verifyConnectivityWithPingPongBySend() // Ensure open connection

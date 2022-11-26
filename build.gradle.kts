@@ -1,3 +1,6 @@
+import Build_gradle.Version.Testing.REDIS_5_VERSION
+import Build_gradle.Version.Testing.REDIS_6_VERSION
+import Build_gradle.Version.Testing.REDIS_7_VERSION
 import org.owasp.dependencycheck.gradle.extension.AnalyzerExtension
 
 plugins {
@@ -19,6 +22,10 @@ object Version {
     const val JACKSON = "2.14.0"
 
     object Testing {
+        const val REDIS_5_VERSION = "5.0.14"
+        const val REDIS_6_VERSION = "6.2.4"
+        const val REDIS_7_VERSION = "7.0.5"
+
         const val JUNIT = "5.9.1"
         const val TEST_CONTAINERS = "1.17.6"
         const val TOXI_PROXY = "2.1.7"
@@ -115,13 +122,31 @@ tasks {
     }
 
     test {
-        systemProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory")
-        useJUnitPlatform()
+        basicConfiguration()
+        environment( "REDIS_VERSION" to REDIS_5_VERSION)
+    }
+
+    val redis6Test by registering(Test::class) {
+        basicConfiguration()
+        environment( "REDIS_VERSION" to REDIS_6_VERSION)
+    }
+
+    val redis7Test by registering(Test::class) {
+        basicConfiguration()
+        environment( "REDIS_VERSION" to REDIS_7_VERSION)
     }
 
     build {
         dependsOn.add(dependencyCheckAnalyze)
+        dependsOn.add(redis6Test)
+        dependsOn.add(redis7Test)
     }
+}
+
+fun Test.basicConfiguration() {
+    maxParallelForks = 1
+    useJUnitPlatform()
+    systemProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory")
 }
 
 val publishUsername: String by lazy {

@@ -60,9 +60,10 @@ internal abstract class AbstractVertxTest {
         checkpoint: Checkpoint,
         block: suspend CoroutineScope.(Checkpoint) -> Unit
     ) {
+        val controlCheckpoint = checkpoint()
         testScope.launch {
             runCatching { block(checkpoint) }
-                .onSuccess { checkpoint.flag() }
+                .onSuccess { controlCheckpoint.flag() }
                 .onFailure { failNow(it) }
         }
     }
@@ -70,13 +71,13 @@ internal abstract class AbstractVertxTest {
     protected fun VertxTestContext.async(
         checkpoints: Int,
         block: suspend CoroutineScope.(Checkpoint) -> Unit
-    ) = async(checkpoint(checkpoints + 1), block)
+    ) = async(checkpoint(checkpoints), block)
 
     protected fun VertxTestContext.asyncDelayed(
         checkpoints: Int,
         delay: Long = 2000,
         block: suspend CoroutineScope.(Checkpoint) -> Unit
-    ) = async(checkpoint(checkpoints + 1)) { checkpoint ->
+    ) = async(checkpoint(checkpoints)) { checkpoint ->
         val controlCheckpoint = checkpoint()
         block(checkpoint)
         // We start an own coroutine for the control checkpoint, so the usual test block can end and just the control

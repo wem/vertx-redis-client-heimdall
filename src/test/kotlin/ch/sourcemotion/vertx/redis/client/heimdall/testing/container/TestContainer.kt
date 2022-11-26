@@ -7,7 +7,7 @@ import org.testcontainers.utility.DockerImageName
 
 internal class TestContainer(dockerImageName: DockerImageName) : GenericContainer<TestContainer>(dockerImageName) {
     companion object {
-        private val redisImageName = DockerImageName.parse("redis:5.0.6")
+        private val redisImageName = DockerImageName.parse("redis:${System.getenv("REDIS_VERSION")}")
         private val toxiProxyImageName = DockerImageName.parse("shopify/toxiproxy:2.1.4")
 
         const val REDIS_PORT = 6379
